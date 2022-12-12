@@ -76,6 +76,7 @@ if(restrict_files[1]!="") {
     }
 }
 if(exclude_files[1]!="") filelist = filelist[!str_detect(filelist, paste(exclude_files, collapse = '|'))]
+if(subset_files[1]!="") filelist = filelist[str_detect(filelist, paste0("(?=.*",subset_files,")",collapse=""))]
 if(length(filelist)==0){stop("No GDX files found.")}
 if(!exists("scenlist")){scenlist <- gsub(paste(removepattern, collapse="|"), "", filelist); scenlist <- gsub("results_", "", scenlist)}
 if(!exists("scenplot_global_order")){scenplot_global_order = seq(1:length(scenlist))}

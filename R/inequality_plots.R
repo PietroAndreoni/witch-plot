@@ -17,7 +17,7 @@ plot_inequality <- function(variable = variable, plot_type = "quantiles", q_shar
   if(is.null(years_lorenz)) years_lorenz <- range(unique(ttoyear(ineq_data$t)))
   if(value_share == "value") ineq_data <- ineq_data %>% group_by_at(setdiff(names(ineq_data), c("value", "dist"))) %>% mutate(value=value/sum(value))
   if(!is.null(q_plot)) ineq_data <- ineq_data %>% filter(dist %in% q_plot)
-  ineq_data_indices <- ineq_data %>% group_by_at(setdiff(names(ineq_data), c("value", "dist"))) %>% summarize(gini=gini(value))
+  ineq_data_indices <- ineq_data %>% group_by_at(setdiff(names(ineq_data), c("value", "dist"))) %>% dplyr::summarize(gini=gini(value))
   
   if(plot_type=="quantiles"){
     #facetted plot of quantiles over files and regions
@@ -59,7 +59,7 @@ plot_inequality <- function(variable = variable, plot_type = "quantiles", q_shar
     #compute fitted distribution parameters in dataframe
     ineq_data_plot_agg <- ineq_data_plot 
     if(!is.null(q_fit)) ineq_data_plot_agg <- ineq_data_plot_agg %>% filter(dist %in% q_fit)
-    ineq_data_plot_agg <- ineq_data_plot_agg %>% group_by_at(c("t", file_group_columns, "pathdir")) %>% summarize(gini=mean(gini), per_capita=mean(per_capita), params = fit_parametric_dist(y=value, x=share, pc.inc=per_capita, gini.e=gini)) %>% unpack(cols = params) %>% as.data.frame()
+    ineq_data_plot_agg <- ineq_data_plot_agg %>% group_by_at(c("t", file_group_columns, "pathdir")) %>% dplyr::summarize(gini=mean(gini), per_capita=mean(per_capita), params = fit_parametric_dist(y=value, x=share, pc.inc=per_capita, gini.e=gini)) %>% unpack(cols = params) %>% as.data.frame()
     ineq_data_plot_everything <- (ineq_data_plot %>% full_join(ineq_data_plot_agg)) %>% mutate(year=ttoyear(t)) %>% select(-gini,-per_capita) %>% as.data.frame()
     
     if(verbose){
@@ -124,13 +124,13 @@ plot_winners_losers_time <- function(scen0, scen1, showvar = "people", yeardist=
   #   scale_color_manual(values = region_palette) + xlab("") + ylab(ylabel) + guides(alpha = FALSE) + geom_area(data = inequality_plot_data %>% filter(t > 3 & w > 0), aes(x=ttoyear(t),y=reorder(w*conv, sort(cpc2020)), fill=n, alpha=as.factor(dist)))
   
   print("Unambiguos winners or losers in year t")
-  print(inequality_plot_data %>% group_by(n, t) %>% summarize(allsame=ifelse(sign(max(w))==sign(min(w)), sign(max(w)), NA)) %>% filter(t==18 & !is.na(allsame)) %>% select(n, allsame))
+  print(inequality_plot_data %>% group_by(n, t) %>% dplyr::summarize(allsame=ifelse(sign(max(w))==sign(min(w)), sign(max(w)), NA)) %>% filter(t==18 & !is.na(allsame)) %>% select(n, allsame))
   
   p <- ggplot() + 
     geom_area(data = inequality_plot_data %>% filter(t > 3), aes(x=ttoyear(t),y=w*conv, fill=n, alpha=as.factor(dist))) +
     scale_fill_manual(values = region_palette) + 
     scale_color_manual(values = region_palette) + xlab("") + ylab(ylabel) + guides(alpha = "none")
-  if(showvar=="people") p <- p + geom_text(data=inequality_plot_data %>% group_by(t) %>% summarize(share_idifferent=sum(w[value==0])/sum(w)) %>% filter(ttoyear(t) %in% seq(2020,yearmax, 20)) %>% mutate(percent_indifferent=paste0(round(share_idifferent),"%")), aes(ttoyear(t), 0, label=percent_indifferent), color="grey20")
+  if(showvar=="people") p <- p + geom_text(data=inequality_plot_data %>% group_by(t) %>% dplyr::summarize(share_idifferent=sum(w[value==0])/sum(w)) %>% filter(ttoyear(t) %in% seq(2020,yearmax, 20)) %>% mutate(percent_indifferent=paste0(round(share_idifferent),"%")), aes(ttoyear(t), 0, label=percent_indifferent), color="grey20")
   saveplot("Inequality Plot - Winners and Losers")
   
 
@@ -203,7 +203,7 @@ pop=sum(pop)) %>% mutate(CV=sqrt(variance)/gdppcppp) %>% as.data.frame()
   #old approach using wtd quantiles (previous seems more precise)
   #global_quantiles <- inequality_dataset_merged %>% group_by(file, year) %>% filter(!is.na(value)) %>% mutate(gdppcppp_pc = gdppcppp*value/0.1, pop_pc=pop/10) %>% arrange(gdppcppp_pc) %>% mutate(gdp_cum=cumsum(gdppcppp_pc*pop_pc), pop_cum=cumsum(pop_pc), gdp_between_cum=cumsum(gdppcppp*pop_pc)) 
   #now also compute deciles at the global level
-  global_quantiles <- global_quantiles %>% full_join(global_quantiles %>% group_by(file, year) %>% summarize(gini_global_globdec=reldist::gini(decile_global), gini_between_popweighted_globdec=reldist::gini(decile_between_popweighted), sum_global=sum(decile_global), sum_between=sum(decile_between_popweighted)), by = c("file", "year")) %>% mutate(decile_global=decile_global/sum_global, decile_between_popweighted=decile_between_popweighted/sum_between, t= yeartot(year)) %>% select(file, t, dist, decile_global, decile_between_popweighted, gini_global_globdec, gini_between_popweighted_globdec)
+  global_quantiles <- global_quantiles %>% full_join(global_quantiles %>% group_by(file, year) %>% dplyr::summarize(gini_global_globdec=reldist::gini(decile_global), gini_between_popweighted_globdec=reldist::gini(decile_between_popweighted), sum_global=sum(decile_global), sum_between=sum(decile_between_popweighted)), by = c("file", "year")) %>% mutate(decile_global=decile_global/sum_global, decile_between_popweighted=decile_between_popweighted/sum_between, t= yeartot(year)) %>% select(file, t, dist, decile_global, decile_between_popweighted, gini_global_globdec, gini_between_popweighted_globdec)
   #plot inequality based on global deciles instead
   print(ggplot(global_quantiles %>% filter(dist=="D1"), aes(year, gini_global_globdec, color=toupper(file))) + geom_line() + geom_point() + theme(legend.position = "bottom") + xlab("") + ylab("Global Gini Index") + theme(legend.position = "right") + xlim(1990, 2100))
   
@@ -212,4 +212,77 @@ pop=sum(pop)) %>% mutate(CV=sqrt(variance)/gdppcppp) %>% as.data.frame()
   return(global_inequality_data)
 }
 
+#requires long format for the n factor of the decomposition and long for the two scenarios (named s1,s2)
+make_shapley <- function(data,global=FALSE) { 
+  require(gtools)
+  require(reldist)
+  get_witch_simple("pop")
+  if (global==TRUE) sets = c("t","nperm") else sets = c("t","n","nperm")
+  perm <- permutations(n=2,r=length(unique(data$name))-1,v=c("s1","s2"),repeats.allowed=T)
+  gini<-tibble()  
+  for (i in unique(data$name)) {
+    i_perm<-tibble()  
+    for (distc in unique(data$dist)){
+      all <- data %>% filter(dist==distc) %>%
+        mutate(name=as_factor(name)) %>%
+        slice(rep(row_number(), length(perm[,1]))) %>%
+        group_by(n) %>%
+        mutate(nperm = 1+floor((row_number()-0.01)/((length(perm[1,])+1)) ) ) #to make safer
+      
+      all_perms <- all %>% filter(name!=i) %>% 
+        mutate(name=as.factor(as.character(name) )) %>% #exclude 
+        rowwise() %>%
+        mutate(val=if_else(perm[nperm,as.numeric(name)]=="s1",s1,s2) ) %>% select(-s1,-s2)
+      
+      i_perm <- all %>% filter(name==i) %>% select(-name,-ykali) %>% full_join(all_perms) %>%
+        group_by(t,n,dist,nperm) %>%
+        summarise(ys1=ykali[as.numeric(name)==1]+s1[as.numeric(name)==1]+sum(val),ys2=ykali[as.numeric(name)==1]+s2[as.numeric(name)==1]+sum(val)) %>% 
+        rbind(i_perm) }
+    gini <- i_perm %>% inner_join(pop %>% select(t,n,value) %>% unique() %>% rename(pop=value) %>% mutate(pop=pop/10)) %>% 
+      group_by_at(sets) %>%
+      summarise(gini_i=gini(ys1*1e6/pop,weights=pop)-gini(ys2*1e6/pop,weights=pop)) %>%
+      group_by_at(setdiff(sets,c("nperm"))) %>%
+      summarise(sigma=sum(gini_i)/length(perm[,1])) %>% ungroup() %>%
+      mutate(name=i) %>% rbind(gini) } 
+  return(gini) }
 
+
+#requires long format for the n factor of the decomposition and long for the two scenarios (named s1,s2)
+make_shapley_theil <- function(data,global=TRUE) { 
+  require(gtools)
+  require(reldist)
+  require(dineq)
+  get_witch_simple("pop")
+  if (global==TRUE) sets = c("t","nperm") else abort("Theil requires global distribution")
+  perm <- permutations(n=2,r=length(unique(data$name))-1,v=c("s1","s2"),repeats.allowed=T)
+  gini<-tibble()  
+  for (i in unique(data$name)) {
+    i_perm<-tibble()  
+    for (distc in unique(data$dist)){
+      all <- data %>% filter(dist==distc) %>%
+        mutate(name=as_factor(name)) %>%
+        slice(rep(row_number(), length(perm[,1]))) %>%
+        group_by(n) %>%
+        mutate(nperm = 1+floor((row_number()-0.01)/((length(perm[1,])+1)) ) ) #to make safer
+      
+      all_perms <- all %>% filter(name!=i) %>% 
+        mutate(name=as.factor(as.character(name) )) %>% #exclude 
+        rowwise() %>%
+        mutate(val=if_else(perm[nperm,as.numeric(name)]=="s1",s1,s2) ) %>% select(-s1,-s2)
+      
+      i_perm <- all %>% filter(name==i) %>% select(-name,-ykali) %>% full_join(all_perms) %>%
+        group_by(t,n,dist,nperm) %>%
+        summarise(ys1=ykali[as.numeric(name)==1]+s1[as.numeric(name)==1]+sum(val),ys2=ykali[as.numeric(name)==1]+s2[as.numeric(name)==1]+sum(val)) %>% 
+        rbind(i_perm) }
+    gini <- i_perm %>% inner_join(pop %>% select(t,n,value) %>% unique() %>% rename(pop=value) %>% mutate(pop=pop/10)) %>% 
+      group_by_at(sets) %>%
+      summarise(theil=dineq::mld_decomp(ys1*1e6/pop, n, weights = pop)$mld_decomp$mld_total -
+        dineq::mld_decomp(ys2*1e6/pop, n, weights = pop)$mld_decomp$mld_total, 
+        theil_w=dineq::mld_decomp(ys1*1e6/pop, n, weights = pop)$mld_decomp$mld_within -
+        dineq::mld_decomp(ys2*1e6/pop, n, weights = pop)$mld_decomp$mld_within, 
+        theil_b=dineq::mld_decomp(ys1*1e6/pop, n, weights = pop)$mld_decomp$mld_between -
+        dineq::mld_decomp(ys2*1e6/pop, n, weights = pop)$mld_decomp$mld_between ) %>% 
+      group_by_at(setdiff(sets,c("nperm"))) %>%
+      summarise(sigma_tot=sum(theil)/length(perm[,1]),sigma_w=sum(theil_w)/length(perm[,1]),sigma_b=sum(theil_b)/length(perm[,1])) %>% 
+      ungroup() %>% mutate(name=i) %>% rbind(gini) }
+  return(gini) }

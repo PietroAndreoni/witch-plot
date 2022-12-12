@@ -85,7 +85,7 @@ add_historical_values <- function(variable, varname=deparse(substitute(variable)
     else{
       #if not check_calibration and historical files are added to the scenarios, compute the mean in case multiple historical sources for one sub-item (e.g., elhydro) and drop the file column
       .hist$file <- NULL
-      .hist <- .hist %>% group_by_at(setdiff(names(.hist), "value")) %>% summarize(value=mean(value), .groups = "drop") %>% as.data.table()
+      .hist <- .hist %>% group_by_at(setdiff(names(.hist), "value")) %>% dplyr::summarize(value=mean(value), .groups = "drop") %>% as.data.table()
     }
 
 
