@@ -237,13 +237,15 @@ make_shapley <- function(data,global=FALSE) {
       i_perm <- all %>% filter(name==i) %>% select(-name,-ykali) %>% full_join(all_perms) %>%
         group_by(t,n,dist,nperm) %>%
         summarise(ys1=ykali[as.numeric(name)==1]+s1[as.numeric(name)==1]+sum(val),ys2=ykali[as.numeric(name)==1]+s2[as.numeric(name)==1]+sum(val)) %>% 
-        rbind(i_perm) }
+        rbind(i_perm) 
+      }
     gini <- i_perm %>% inner_join(pop %>% select(t,n,value) %>% unique() %>% rename(pop=value) %>% mutate(pop=pop/10)) %>% 
       group_by_at(sets) %>%
       summarise(gini_i=gini(ys1*1e6/pop,weights=pop)-gini(ys2*1e6/pop,weights=pop)) %>%
       group_by_at(setdiff(sets,c("nperm"))) %>%
       summarise(sigma=sum(gini_i)/length(perm[,1])) %>% ungroup() %>%
-      mutate(name=i) %>% rbind(gini) } 
+      mutate(name=i) %>% rbind(gini) 
+    } 
   return(gini) }
 
 

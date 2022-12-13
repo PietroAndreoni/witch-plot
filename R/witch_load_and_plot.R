@@ -283,35 +283,30 @@ create_witch_online <- function(list_of_variables=c("Q", "Q_EN", "Q_FUEL", "Q_OU
 #pietro
 make_scen <- function(.x) {
   .x %>%
-    mutate(setting = case_when( (TR=="epc" & D=="neutral") ~ "government",
-                                (TR=="neutral" & D=="neutral") ~ "baseline",
-                                (TR=="epc" & D=="market") ~"market",
-                                (TR=="neutral" & D=="market") ~"market_nored"),
-           O = ifelse(str_detect(B,"p") | D=="no" | B=="ref","no","yes" )) %>%
-    mutate(Scenario = case_when(B=="700" ~ "1.5C peak",
-                                B=="700p" ~ "1.5C full",
-                                B=="1300" ~ "2C peak",
-                                B=="1300p" ~ "2C full",
-                                B=="ref" ~ "NDCs"),B = str_remove(B,"p")) %>%
-    mutate(setting = as.factor(setting)) %>% mutate(setting =fct_relevel(setting,c("baseline","market","market_nored","government"))) }
+    mutate(O = ifelse(str_detect(B,"p") | CDR=="no" | B=="ref","no","yes" )) %>%
+    mutate(Scenario = case_when(B=="650" ~ "1.5C peak",
+                                B=="650p" ~ "1.5C full",
+                                B=="1150" ~ "2C peak",
+                                B=="1150p" ~ "2C full",
+                                B=="ref" ~ "Baseline"),B = str_remove(B,"p")) }
 
-make_global_sum <- function(.x) {
+make_global_sum <- function(.x,vars=c("value")) {
   rbind(.x, .x %>% 
           group_by_at(c("t","pathdir",file_group_columns)) %>%
-          summarise(value=sum(value)) %>%
-          mutate(n="World")) }
+          summarise_at(vars,sum) %>%
+          mutate(n="World"),fill=TRUE) }
 
-make_global_mean <- function(.x,df,varname="value") {
-  rbind(.x, full_join(.x,df) %>% 
+make_global_mean <- function(.x,vars=c("value"),w=c("weight") ) {
+  rbind(.x, .x %>% 
           group_by_at(c("t","pathdir",file_group_columns)) %>%
-          summarise(value=weighted.mean(value,varname)) %>%
+          summarise_at(vars, weighted.mean(.,w=w) ) %>%
           mutate(n="World")) }
 
-make_cumulative <- function(.x,columns=c("n","file"),varname="value",yearmax=2100) {      
+make_cumulative <- function(.x,columns=c("n","file"),vars=c("value"),yearmax=2100) {      
   .x %>%
     filter(ttoyear(t) <= yearmax) %>%
     group_by_at(columns) %>% 
     complete(t=seq(min(t), max(t), 0.2)) %>% 
-    mutate_at(across(varname, approxfun(t, .x)(t))) %>%
+    mutate(vars, approxfun(t, .)(t)) %>%
     group_by_at(columns) %>% 
-    summarise(across(varname, sum(.x,na.rm=TRUE) ))  }
+    summarise_at(vars, sum, na.rm=TRUE) }
