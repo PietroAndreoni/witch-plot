@@ -176,7 +176,7 @@ ALL_FLOWS <- right_join(ABATECOST,ineq_weights %>% filter(ineq_elast=="abatement
 
 get_witch_simple("pop")
 gini_dec <- ALL_FLOWS %>%
-  inner_join(pop %>% select(t,n,value) %>% unique() %>% rename(pop=value) %>% mutate(pop=pop/10)) %>%
+  inner_join(pop %>% rename(pop=value) %>% mutate(pop=pop/10)) %>%
   inner_join(ykali_dist) %>%
   group_by_at(c("t",file_group_columns)) %>%
   summarise(gini0=reldist::gini(ykali*1e6/pop,weights=pop),
