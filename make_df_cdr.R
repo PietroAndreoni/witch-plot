@@ -11,6 +11,7 @@ get_witch_simple("Y_DIST")
 get_witch_simple("l") 
 get_witch_simple("YGROSS")
 get_witch_simple("YGROSS_DIST")
+get_witch_simple("pop")
 
 E_NEG <- make_global_sum(E_NEG %>% make_scen()) %>%
   rename(use=value)
@@ -67,14 +68,14 @@ ginit <- Y_DIST %>%
   group_by(t,n,ssp) %>% 
   mutate(ginirel = (gini - gini[Scenario=="Baseline"]))
 
-ineq_global <- compute_global_inequality()
-
-giniw <- ineq_global %>%
-  filter(dist=="D10" & file!="historical") %>% 
-  select(t,file,gini_total) %>%
-  inner_join(all_scenarios) %>%
-  group_by_at(c("t","ssp") ) %>%
-  mutate(ginirel = gini_total  - gini_total[Scenario=="Baseline"])
+giniw <- Y_DIST %>%
+  inner_join(pop %>% rename(pop=value) %>% mutate(pop=pop/10)) %>%
+  group_by_at(c("t",file_group_columns)) %>%
+  summarise(gini=reldist::gini(value*1e6/pop,weights=pop)) %>% 
+  group_by_at(file_group_columns) %>% 
+  mutate(gini0 = gini - gini[ttoyear(t)==2020] ) %>%
+  group_by(t,ssp) %>% 
+  mutate(ginirel = (gini - gini[Scenario=="Baseline"]))
 
 YGROSS_DIST <- YGROSS_DIST %>% make_scen() %>%
   rename(ygrossd=value)
@@ -174,19 +175,6 @@ ALL_FLOWS <- right_join(ABATECOST,ineq_weights %>% filter(ineq_elast=="abatement
   full_join(YGROSS_DIST) %>%
   mutate(yab=ygrossd-abcost,ynet=yab+cdrrev-cdrcost,y=ynet+transfer-ctx-gentax) 
 
-get_witch_simple("pop")
-gini_dec <- ALL_FLOWS %>%
-  inner_join(pop %>% rename(pop=value) %>% mutate(pop=pop/10)) %>%
-  inner_join(ykali_dist) %>%
-  group_by_at(c("t",file_group_columns)) %>%
-  summarise(gini0=reldist::gini(ykali*1e6/pop,weights=pop),
-            ginig=reldist::gini(ygrossd*1e6/pop,weights=pop),
-            gini_yab=reldist::gini(yab*1e6/pop,weights=pop), 
-            gini_ynet=reldist::gini(ynet*1e6/pop,weights=pop), 
-            gini=reldist::gini(y*1e6/pop,weights=pop)) %>% 
-  ungroup() %>% 
-  mutate(d0=ginig-gini0,d1=gini_yab-ginig,d2=gini_ynet-gini_yab,d3=gini-gini_ynet,tot=gini-gini0)
-
 FLOWS <- ALL_FLOWS %>% 
   group_by_at(c("t","pathdir","n",file_group_columns)) %>%
   summarise(transfer=sum(transfer),gentax=sum(-gentax),cdrcost=sum(-cdrcost),ctx=sum(-ctx),abcost=sum(-abcost),cdrrev=sum(cdrrev))
@@ -195,8 +183,7 @@ FLOWS <-  rbind(FLOWS, FLOWS %>%
                   group_by_at(c("t","pathdir",file_group_columns)) %>%
                   summarise(transfer=sum(transfer),gentax=sum(gentax),cdrcost=sum(cdrcost),ctx=sum(ctx),abcost=sum(abcost),cdrrev=sum(cdrrev)) %>%
                   mutate(n="World") ) %>%
-  full_join(Y %>% filter(t %in% unique(FLOWS$t))) %>%
-  mutate(trgdprel=transfer/gdp,txgdprel=gentax/gdp) 
+  full_join(YGROSS %>% filter(t %in% unique(FLOWS$t))) 
 
 get_witch_simple("CPC")
 
@@ -207,6 +194,8 @@ eff <- full_join(emabcum,CPC %>% make_scen() %>% rename(cpc=value) %>% filter(tt
   mutate(share=tot/tot[n=="World"],
          sharedac=use/use[n=="World"],
          shareab=abate/abate[n=="World"]) 
+
+#ineq_global <- compute_global_inequality()
 
 ratio <- ineq_global %>%
   filter(dist %in% c("D1","D10") ) %>%

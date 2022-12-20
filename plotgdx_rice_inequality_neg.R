@@ -10,7 +10,7 @@ require(dineq)
 rm(list = ls())
 witch_folder = "../../RICE50x" #Where you're RICE/DICE/RICE50x code is located
 #main directory of your results files
-main_directory <- "../Results_dec22/" # by default, the witch source folder
+main_directory <- "../Results_newcosts/" # by default, the witch source folder
 #main_directory <- "../Results_sens/" # by default, the witch source folder
 subdir = c("") #can be multiple directories
 #flag to plot scenarios
@@ -22,11 +22,12 @@ ssp <- c("ssp1","ssp2","ssp3","ssp4","ssp5")
 coop <- "noncoop"
 budget <-"650"
 cdr_opt <- "geo"
+sens <- "ext"
 region_id = "ed57" #for historical data folder
 year0 = 2015
 tstep = 5
 
-exclude_files = c("")
+exclude_files = c("DISText","OM")
 restrict_files = c("")
 subset_files = c("") 
 
@@ -40,7 +41,23 @@ restrict_files = restrict_files[-1]
 removepattern = c("results_")
 
 #If you want to have significant separations or parts of file names, specify file_separate <- c(type="first|last|separate", sep="_", names="c("file_new"))
-file_separate <- c(type="separate", sep="_", names=c("ssp","C","B","CDR"))
+file_separate <- c(type="separate", sep="_", names=c("ssp","C","B","CDR","DIST"))
+
+if (sens=="ela") {
+restrict_files = c("")
+exclude_files = c("")
+subset_files = c("OMfit") 
+file_separate <- c(type="separate", sep="_", names=c("ssp","C","B","CDR","OM","NEG","TAX","DIST"))
+}
+
+if (sens=="ext") {
+  restrict_files = c("results_ssp2_Cnoncoop_B650_CDRgeo_DISText",
+                     "results_ssp2_Cnoncoop_B650_CDRgeo_DISTon",
+                     "results_ssp2_Cnoncoop_Bref_CDRno_DISTon")
+  exclude_files = c("")
+  subset_files = c("") 
+  file_separate <- c(type="separate", sep="_", names=c("ssp","C","B","CDR","DIST"))
+}
 
 yearmin = 1980
 yearmax = 2300

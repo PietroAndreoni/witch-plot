@@ -213,10 +213,9 @@ pop=sum(pop)) %>% mutate(CV=sqrt(variance)/gdppcppp) %>% as.data.frame()
 }
 
 #requires long format for the n factor of the decomposition and long for the two scenarios (named s1,s2)
-make_shapley <- function(data,global=FALSE) { 
+make_shapley <- function(data,pop,global=FALSE) { 
   require(gtools)
   require(reldist)
-  get_witch_simple("pop")
   if (global==TRUE) sets = c("t","nperm") else sets = c("t","n","nperm")
   perm <- permutations(n=2,r=length(unique(data$name))-1,v=c("s1","s2"),repeats.allowed=T)
   gini<-tibble()  
@@ -239,7 +238,7 @@ make_shapley <- function(data,global=FALSE) {
         summarise(ys1=ykali[as.numeric(name)==1]+s1[as.numeric(name)==1]+sum(val),ys2=ykali[as.numeric(name)==1]+s2[as.numeric(name)==1]+sum(val)) %>% 
         rbind(i_perm) 
       }
-    gini <- i_perm %>% inner_join(pop %>% select(t,n,value) %>% unique() %>% rename(pop=value) %>% mutate(pop=pop/10)) %>% 
+    gini <- i_perm %>% inner_join(pop) %>% 
       group_by_at(sets) %>%
       summarise(gini_i=gini(ys1*1e6/pop,weights=pop)-gini(ys2*1e6/pop,weights=pop)) %>%
       group_by_at(setdiff(sets,c("nperm"))) %>%

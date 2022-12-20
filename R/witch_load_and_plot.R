@@ -284,10 +284,10 @@ create_witch_online <- function(list_of_variables=c("Q", "Q_EN", "Q_FUEL", "Q_OU
 make_scen <- function(.x) {
   .x %>%
     mutate(O = ifelse(str_detect(B,"p") | CDR=="no" | B=="ref","no","yes" )) %>%
-    mutate(Scenario = case_when(B=="650" ~ "1.5C peak",
-                                B=="650p" ~ "1.5C full",
-                                B=="1150" ~ "2C peak",
-                                B=="1150p" ~ "2C full",
+    mutate(Scenario = case_when(B=="650" ~ "1.5C full",
+                                B=="650p" ~ "1.5C peak",
+                                B=="1150" ~ "2C full",
+                                B=="1150p" ~ "2C peak",
                                 B=="ref" ~ "Baseline"),B = str_remove(B,"p")) }
 
 make_global_sum <- function(.x,vars=c("value")) {

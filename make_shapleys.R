@@ -43,7 +43,7 @@ scen <- "1.5C full"
 ref <- "Baseline"
 sel_scens <- c(scen,ref)
 ### extra dataframes
-for (i in c(2)) {
+for (i in c(1,2,3,4,5)) {
 
 print(paste0("Global calc ssp",as.character(i))) 
 
@@ -57,7 +57,11 @@ shapleyref <- ALL_FLOWS %>% select(-yab,-ynet) %>%
   mutate(ssp=i) %>%
   rbind(shapleyref) 
 
-print(paste0("Regional ssp",as.character(i))) 
+print(paste0("Done with ssp",as.character(i))) 
+
+} 
+
+print("Regional ssp 2") 
 
 shapleyrefall <- ALL_FLOWS %>% select(-yab,-ynet) %>%
   filter(ssp==2 & ttoyear(t)<=2100 & ttoyear(t)>=2020 & Scenario %in% sel_scens ) %>%
@@ -66,11 +70,11 @@ shapleyrefall <- ALL_FLOWS %>% select(-yab,-ynet) %>%
   mutate(abcost=-abcost,cdrcost=-cdrcost,ctx=-ctx,gentax=-gentax,err=ygrossd-ykali) %>%
   group_by(t,n) %>%
   do(owen(zid_gini,list(c("abcost","err"),c("cdrrev","cdrcost","gentax"), c("transfer","ctx")), data=.,scen=scen,ref=ref)) %>%
-  mutate(ssp=i) %>%
+  mutate(ssp=2) %>%
   rbind(shapleyrefall) 
 
-print(paste0("Theil between, ssp",as.character(i))) 
- 
+print("Theil between, ssp") 
+
 shapleyreftheil <- ALL_FLOWS %>%
   filter(ssp==2 & ttoyear(t)<=2100 & ttoyear(t)>=2020  & Scenario %in% sel_scens ) %>%
   inner_join(ykali_dist) %>%
@@ -78,10 +82,10 @@ shapleyreftheil <- ALL_FLOWS %>%
   mutate(abcost=-abcost,cdrcost=-cdrcost,ctx=-ctx,gentax=-gentax,err=ygrossd-ykali) %>%
   group_by(t) %>%
   do(owen(zid_theilb,list(c("abcost","err"),c("cdrrev","cdrcost","gentax"), c("transfer","ctx")), data=.,scen=scen,ref=ref )) %>%
-  mutate(ssp=i,dec="between") %>%
+  mutate(ssp=2,dec="between") %>%
   rbind(shapleyreftheil) 
 
-print(paste0("Theil within, ssp",as.character(i))) 
+print("Theil within, ssp") 
 
 shapleyreftheil <- ALL_FLOWS %>%
   filter(ssp==2 & ttoyear(t)<=2100 & ttoyear(t)>=2020 & Scenario %in% sel_scens ) %>%
@@ -90,9 +94,5 @@ shapleyreftheil <- ALL_FLOWS %>%
   mutate(abcost=-abcost,cdrcost=-cdrcost,ctx=-ctx,gentax=-gentax,err=ygrossd-ykali) %>%
   group_by(t) %>%
   do(owen(zid_theilw,list(c("abcost","err"),c("cdrrev","cdrcost","gentax"), c("transfer","ctx")), data=.,scen=scen,ref=ref )) %>%
-  mutate(ssp=i,dec="within") %>%
+  mutate(ssp=2,dec="within") %>%
   rbind(shapleyreftheil) 
-
-print(paste0("Done with ssp",as.character(i))) 
-} 
-
