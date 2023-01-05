@@ -57,6 +57,30 @@ shapleyref <- ALL_FLOWS %>% select(-yab,-ynet) %>%
   mutate(ssp=i) %>%
   rbind(shapleyref) 
 
+print(paste0("Theil between, ssp",as.character(i))) 
+
+shapleyreftheil <- ALL_FLOWS %>%
+  filter(ssp==i & ttoyear(t)<=2100 & ttoyear(t)>=2020  & Scenario %in% sel_scens ) %>%
+  inner_join(ykali_dist) %>%
+  inner_join(pop %>% mutate(pop=pop/10)) %>% 
+  mutate(abcost=-abcost,cdrcost=-cdrcost,ctx=-ctx,gentax=-gentax,err=ygrossd-ykali) %>%
+  group_by(t) %>%
+  do(owen(zid_theilb,list(c("abcost","err"),c("cdrrev","cdrcost","gentax"), c("transfer","ctx")), data=.,scen=scen,ref=ref )) %>%
+  mutate(ssp=as.character(i),dec="between") %>%
+  rbind(shapleyreftheil) 
+
+print(paste0("Theil within, ssp",as.character(i))) 
+
+shapleyreftheil <- ALL_FLOWS %>%
+  filter(ssp==i & ttoyear(t)<=2100 & ttoyear(t)>=2020 & Scenario %in% sel_scens ) %>%
+  inner_join(ykali_dist) %>%
+  inner_join(pop %>% mutate(pop=pop/10)) %>% 
+  mutate(abcost=-abcost,cdrcost=-cdrcost,ctx=-ctx,gentax=-gentax,err=ygrossd-ykali) %>%
+  group_by(t) %>%
+  do(owen(zid_theilw,list(c("abcost","err"),c("cdrrev","cdrcost","gentax"), c("transfer","ctx")), data=.,scen=scen,ref=ref )) %>%
+  mutate(ssp=as.character(i),dec="within") %>%
+  rbind(shapleyreftheil) 
+
 print(paste0("Done with ssp",as.character(i))) 
 
 } 
@@ -72,27 +96,3 @@ shapleyrefall <- ALL_FLOWS %>% select(-yab,-ynet) %>%
   do(owen(zid_gini,list(c("abcost","err"),c("cdrrev","cdrcost","gentax"), c("transfer","ctx")), data=.,scen=scen,ref=ref)) %>%
   mutate(ssp=2) %>%
   rbind(shapleyrefall) 
-
-print("Theil between, ssp") 
-
-shapleyreftheil <- ALL_FLOWS %>%
-  filter(ssp==2 & ttoyear(t)<=2100 & ttoyear(t)>=2020  & Scenario %in% sel_scens ) %>%
-  inner_join(ykali_dist) %>%
-  inner_join(pop %>% mutate(pop=pop/10)) %>% 
-  mutate(abcost=-abcost,cdrcost=-cdrcost,ctx=-ctx,gentax=-gentax,err=ygrossd-ykali) %>%
-  group_by(t) %>%
-  do(owen(zid_theilb,list(c("abcost","err"),c("cdrrev","cdrcost","gentax"), c("transfer","ctx")), data=.,scen=scen,ref=ref )) %>%
-  mutate(ssp=2,dec="between") %>%
-  rbind(shapleyreftheil) 
-
-print("Theil within, ssp") 
-
-shapleyreftheil <- ALL_FLOWS %>%
-  filter(ssp==2 & ttoyear(t)<=2100 & ttoyear(t)>=2020 & Scenario %in% sel_scens ) %>%
-  inner_join(ykali_dist) %>%
-  inner_join(pop %>% mutate(pop=pop/10)) %>% 
-  mutate(abcost=-abcost,cdrcost=-cdrcost,ctx=-ctx,gentax=-gentax,err=ygrossd-ykali) %>%
-  group_by(t) %>%
-  do(owen(zid_theilw,list(c("abcost","err"),c("cdrrev","cdrcost","gentax"), c("transfer","ctx")), data=.,scen=scen,ref=ref )) %>%
-  mutate(ssp=2,dec="within") %>%
-  rbind(shapleyreftheil) 

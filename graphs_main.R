@@ -1,7 +1,7 @@
 ### figure 1: 
 ###1a: global flows
-fig1a <- FLOWS %>% select(-trgdprel,-txgdprel) %>% mutate(net = transfer + gentax + cdrcost + ctx + abcost + cdrrev) %>% 
-  pivot_longer(c(transfer,gentax,cdrcost,ctx,abcost,cdrrev),names_to="Flow") %>% mutate(valuerel=value/gdp,netrel=net/gdp) %>% 
+fig1a <- FLOWS %>% mutate(net = transfer + gentax + cdrcost + ctx + abcost + cdrrev) %>% 
+  pivot_longer(c(transfer,gentax,cdrcost,ctx,abcost,cdrrev),names_to="Flow") %>% mutate(valuerel=value/ygross,netrel=net/ygross) %>% 
   filter(n=="World" & ttoyear(t) >= 2020 & ttoyear(t) <= 2100 & O=="yes" & B=="650" & ssp==2) %>%
   mutate(Source=case_when( Flow=="abcost" ~ "Abatement costs",
                            Flow=="cdrcost" ~ "Cost of NETs",
@@ -17,7 +17,7 @@ fig1a <- FLOWS %>% select(-trgdprel,-txgdprel) %>% mutate(net = transfer + genta
   ylab('Costs and gains, \n global aggregate [% GDP]') + xlab('') + theme(legend.position = "bottom")
 
 ###1b: elasticities characterization
-fig1b <- ggplot(ineq_weights %>% filter(ttoyear(t) %in% c(2075) & ssp==2 & O=="yes" & B=="650" & !ineq_elast %in% c("damages","redist") ) %>%
+fig1b <- ggplot(ineq_weights %>% filter(ttoyear(t) %in% c(2075) & ssp==2 & O=="yes" & B=="650" & !ineq_elast %in% c("damages","redist","ctax") ) %>%
          mutate(ineq_elast=case_when(ineq_elast=="carbon_rev" ~ "NET revenus and costs",
                                      ineq_elast=="abatement" ~ "Carbon tax, abatement costs and recycling",
                                      ineq_elast=="tax" ~ "Other taxes" )) %>% 
@@ -82,10 +82,17 @@ c2 <- c("USA","Canada","Russia","Gulf states","Egypt","Norway","Sweden","Rest of
 cname <- setNames(c2,countries)
 palette_short <- setNames(region_palette_ed57[setdiff(countries,"row")],setdiff(c2,"Rest of the World"))
 
-fig3a <- full_join(inner_join(emabcum %>% filter(B=="650" & O=="yes" & n!="World"),dacum) %>% mutate(ssp=paste0("ssp",ssp)),shapleyrefall%>% group_by(t,n,ssp) %>% summarise(dacineq=(sigma[name=="c2"]+sigma[name=="c3"]),tot=sum(sigma)) %>% ungroup() %>% mutate(abineq=tot-dacineq) ) %>% inner_join(pop %>% rename(pop=value) %>% mutate(ssp=paste0("ssp",ssp))) %>%
-  mutate(Region=cname[n]) %>% filter(ttoyear(t) %in% c(2075) & ssp=="ssp2" & use/abate>0.01) %>% ggplot() +
-  geom_point(aes(x=use/(use+abate)*100,y=tot*100,fill=Region,size=use),shape=21,color="black") +
-  #  geom_text_repel(aes(x=use/(use+abate)*100,y=tot*100,color=Region,label=n)) +
+fig3a <- inner_join(inner_join(emabcum %>% filter(B=="650" & O=="yes" & n!="World"),dacum) %>% mutate(ssp=paste0("ssp",ssp)),
+                   shapleyrefall %>% filter(ttoyear(t) %in% c(2075) & ssp==2) %>%  
+                   group_by(t,n,ssp) %>% 
+                   summarise(cdrineq=sum(value[group %in% c(2,3)]),tot=sum(value)) %>% 
+                   ungroup() %>% mutate(abineq=tot-cdrineq) %>% 
+                   mutate(ssp=paste0("ssp",ssp))) %>% 
+        inner_join(pop %>% mutate(ssp=paste0("ssp",ssp))) %>%
+  mutate(Region=cname[n]) %>% ggplot() +
+  geom_point(aes(x=use/(use+abate)*100,y=tot*100,fill=Region,size=use,shape=ttoyear(t)),shape=21,color="black") +
+    geom_text_repel(aes(x=use/(use+abate)*100,y=tot*100,color=Region,label=Region)) +
+  #  geom_smooth(aes(x=use/(use+abate)*100,y=tot*100),method="lm",formula=y~x-1 ) +
   scale_fill_manual(values=palette_short,na.value = "grey") +
   scale_color_manual(values=palette_short,na.value = "grey") +
   scale_size_continuous(range=c(3,12),breaks =c(10,40,80)) +
@@ -95,10 +102,10 @@ fig3a <- full_join(inner_join(emabcum %>% filter(B=="650" & O=="yes" & n!="World
   xlab('Cumulative carbon removed \n[% abated + removed]') + ylab('Change in gini index, net-zero year \n [points]') +
   theme_pubr()
 
-fig3b <- ggplot(rbind(ginit,giniw %>% rename(gini=gini_total) %>% select(-ginirel) %>% filter(t>=1)) %>% 
+fig3b <- ggplot(rbind(ginit,giniw %>% select(-ginirel) %>% filter(t>=1)) %>% 
          group_by_at(c("t","n","ssp") ) %>% 
          mutate(ginirel = (gini - gini[B=="ref"])) %>%
-         filter(ssp %in% c(2) & B=="650" & O=="yes" & ttoyear(t)>=2020 & ttoyear(t)<=2100) %>%
+         filter(ssp %in% c(1) & B=="650" & O=="yes" & ttoyear(t)>=2020 & ttoyear(t)<=2100) %>%
         ungroup() %>% mutate(ssp=paste0("ssp",ssp),Region=cname[n])) +
   geom_line(data=.%>%
               filter(n %in% countries),aes(x=ttoyear(t),y=ginirel*100,color=Region),size=1.5) +  
@@ -108,16 +115,16 @@ fig3b <- ggplot(rbind(ginit,giniw %>% rename(gini=gini_total) %>% select(-ginire
   geom_ribbon(data=.%>% filter(!n %in% countries) %>% group_by(t,ssp,file) %>% summarise(min=quantile(ginirel,probs=c(0.25)),max=quantile(ginirel,probs=c(0.75))),
               aes(x=ttoyear(t),ymin=min*100,ymax=max*100),size=0.5,alpha=0.2,fill="black") + 
   scale_fill_manual(values=c(palette_short),guide="none") +
-  ylim(c(0,2.2)) +
+#  ylim(c(0,2.2)) +
   geom_hline(yintercept=0,color="grey") +
   scale_color_manual(values=c(palette_short,"Rest of the World"="black")) +
   theme_pubr()+ xlab('') + ylab('Change in gini index \n [points]') + theme(legend.title = element_blank())
 
 fig3c <- ggplot() +
-  geom_bar(data=shapleyrefall %>% filter(ssp %in% c("ssp2") & ttoyear(t) %in% c(2075,2100) ) %>% 
-             mutate(n=ifelse(n %in% countries,n,"row")) %>% group_by(t,name,ssp,n) %>% summarise(sigma=median(sigma)) %>% 
-             mutate(factors=case_when(name=="c1"~"Abatement costs",name=="c2"~"DAC revenues net of tax increase",name=="c3"~"carbon tax net of recycling",name=="err"~"Other factors"),Region=cname[n]) %>% group_by(t,n,ssp) %>% 
-             mutate(value=sigma/sum(sigma)) %>% ungroup() %>% mutate(Region=as_factor(Region)) %>%
+  geom_bar(data=shapleyrefall %>% mutate(ssp=paste0("ssp",ssp)) %>% filter(ssp %in% c("ssp2") & ttoyear(t) %in% c(2075,2100) ) %>% 
+             mutate(n=ifelse(n %in% countries,n,"row")) %>% group_by(t,group,ssp,n) %>% summarise(value=median(value)) %>% 
+             mutate(factors=case_when(group=="1"~"Abatement costs",group=="2"~"DAC revenues net of tax increase",group=="3"~"carbon tax net of recycling"),Region=cname[n]) %>% group_by(t,n,ssp) %>% 
+             mutate(value=value/sum(value)) %>% ungroup() %>% mutate(Region=as_factor(Region)) %>%
              mutate(Region=fct_relevel(Region,c2)),
            aes(x=Region,y=value*100,fill=factors,group=n),stat="identity",position="stack",color="black") +
   facet_wrap(ttoyear(t)~.,nrow=2) + 
@@ -128,11 +135,11 @@ ggsave("fig3.png",width=12,height=10,path=str_c(main_directory,"/graphs"),dpi=40
 
 
 ### figure 4:overshoot vs no overshoot
-fig4a <- ggplot(rbind(ginit,giniw %>% rename(gini=gini_total) %>% select(-ginirel) %>% filter(t>=1)) %>% 
-         filter(IMP == impacts & B!="ref") %>%
+fig4a <- ggplot(rbind(ginit,giniw %>% select(-ginirel) %>% filter(t>=1)) %>% 
+         filter(B!="ref") %>%
          group_by_at(c("t","n","ssp","B") ) %>% 
          mutate(ginirel = (gini - gini[O=="yes"])) %>%
-         filter(ssp %in% c(2) & setting==setting_select & B=="650" & O=="no" & ttoyear(t)>=2020 & ttoyear(t)<=2100) %>%
+         filter(ssp %in% c("2") & B=="650" & O=="no" & ttoyear(t)>=2020 & ttoyear(t)<=2100) %>%
          mutate(Region=cname[n]) ) +
   geom_line(data=.%>%
               filter(n %in% countries),aes(x=ttoyear(t),y=ginirel*100,color=Region),size=1.5) + 
@@ -159,25 +166,51 @@ fig4 <- ggarrange(fig4a,fig4b,labels="AUTO")
 ggsave("fig4.png",width=12,height=6,path=str_c(main_directory,"/graphs"),dpi=400)
 
 ## figure 5: global gini
-fig5 <- ggplot(shapleyref %>% mutate(factors=case_when(name=="c1"~"Abatement costs",name=="c2"~"DAC profits and tax increase", name=="c3"~"carbon tax net of recycling",name=="err"~"Other factors")) %>% 
+fig5 <- ggplot(shapleyref %>% 
+         mutate(factors=case_when(group=="1"~"Abatement costs",group=="2"~"DAC profits and tax increase", group=="3"~"carbon tax net of recycling")) %>% 
+         group_by(t,factors,ssp) %>% 
+         summarise(value=sum(value)) %>%
          group_by(factors,ssp) %>% 
-         complete(t=seq(min(t), max(t), 0.2)) %>% mutate(sigma=approxfun(t, sigma)(t))) + 
-  geom_area(aes(x=ttoyear(t),y=sigma*100,fill=factors),color="black") +
-  geom_line(data=. %>% group_by(t,ssp) %>% summarise(value=sum(sigma)) ,
+         complete(t=seq(min(t), max(t), 0.2)) %>% 
+         mutate(value=approxfun(t, value)(t))) + 
+  geom_area(aes(x=ttoyear(t),y=value*100,fill=factors),color="black") +
+  geom_line(data=. %>% group_by(t,ssp) %>% summarise(value=sum(value)) ,
             aes(x=ttoyear(t),y=value*100),color="blue",size=1.5,linetype=2 ) +
-  geom_line(data=giniw %>% filter(ssp==2 & Scenario!="Baseline" & O=="no" & ttoyear(t)<=2100) ,
+  geom_line(data=giniw %>% filter(Scenario=="1.5C full" & ttoyear(t)<=2100) ,
             aes(x=ttoyear(t),y=ginirel*100)) +
+  facet_wrap(ssp~.,) +
   xlab('') + ylab('variation in gini index \n 1.5°C vs ref') + theme_pubr() + theme(legend.title = element_blank()) + guides(fill=guide_legend(nrow=2)) + guides(color="none")
 ggsave("fig5.png",width=8.3,height = 6.5,path=str_c(main_directory,"/graphs"),dpi=400)
 
-ggplot(gini_dec %>% filter(B=="650" & O=="no" & ssp==2 & ttoyear(t)<=2100)) +
-  geom_area(data=.%>%pivot_longer(c(d0,d1,d2,d3)),aes(x=ttoyear(t),y=value,fill=name),position="stack") +
-  geom_line(aes(x=ttoyear(t),y=d0+d1+d2+d3),linetype=2,color="blue") +
-  geom_line(aes(x=ttoyear(t),y=tot)) 
+ggplot(shapleyreftheil %>% 
+         group_by(factor,group,dec,ssp) %>% 
+         complete(t=seq(min(t), max(t), 0.2)) %>% mutate(value=approxfun(t, value)(t))# %>%
+         #group_by(group,dec,t) %>% summarise(value=sum(value,na.rm=TRUE)) 
+       )+
+  geom_area(aes(x=ttoyear(t),y=value*100,fill=factor,alpha=dec )) +
+  geom_line(data=.%>%group_by(t,ssp) %>% summarise(value=sum(value)),aes(x=ttoyear(t),y=value*100),color="black",size=2) +
+  scale_alpha_manual(values=c(0.4,1)) + facet_wrap(ssp~.,scales="free")
 
-ggplot(ginit %>% filter(B=="650" & O=="no" & ssp==2 & ttoyear(t)<=2100)) +
-  geom_line(aes(x=ttoyear(t),y=ginirel*100)) +
-  facet_wrap(n~.,)
+ggplot(shapleyrefall %>%
+         group_by(factor,n) %>% 
+         complete(t=seq(min(t), max(t), 0.2)) %>%
+         group_by(t,n,group,ssp) %>% 
+         summarise(value=sum(value)) )  + 
+  geom_line(data=.%>%group_by(t,n) %>% summarise(value=sum(value)),aes(x=ttoyear(t),y=value*100),color="black")+
+  geom_area(aes(x=ttoyear(t),y=value*100,fill=as.factor(group) ),color="black") +
+  facet_wrap(names_ed57[n]~.,scales="free")
+
+ggplot(ginit %>% filter(B=="650" & O=="yes" & ttoyear(t)<=2100)) +
+  geom_line(aes(x=ttoyear(t),y=ginirel*100,color=ssp)) +
+  facet_wrap(n~.,scales="free")
+
+get_witch_simple("MAC")
+get_witch_simple("MRC")
+MAC <- MAC %>% make_scen()
+MRC <- MRC %>% make_scen()
+
+ggplot() +
+  geom_line(data=CPRICE %>% filter(ttoyear(t)<=2100 & ssp==2 & Scenario=="1.5C full"),aes(x=ttoyear(t),y=cprice,color=n)) 
 
 ## METHODS 
 figm1a <- ggplot(full_join(gini,giniwealth) %>% filter(year>=1950) ) +
@@ -253,27 +286,23 @@ gdpc <- Y %>% filter(B==700 & O=="yes" & ttoyear(t)>=2050 & ttoyear(t) <= 2100) 
   group_by(North,ssp) %>% summarise(use=sum(use),pop=sum(pop),cdrcost=sum(cdrcost),cdrcost_mean=weighted.mean(cdrcost/pop,weights=pop)) %>% 
   group_by(ssp) %>% mutate(ratio=cdrcost_mean/cdrcost_mean[North=="no"])
 
-### profits of CDR
 
 
-
-### GDPc vs baseline Gini
-regmap <- ggplot(full_join(PROF_CDR %>% 
-                             filter(ttoyear(t)==2100 & Scenario=="1.5C peak" & n!="World" & ssp==2) %>% 
-                             inner_join(YGROSS) %>% 
-                             inner_join(l %>% rename(pop=value)) %>% 
-                                        mutate(profd=discretize(prof*1000,method="fixed",breaks=c(0,10,100,500,1000,3000)),
-                                               profdpc=discretize(prof/pop*1e6,breaks=5),
-                                               profrel=discretize(prof/value,method="fixed",breaks=c(0,0.01,0.02,0.05,0.10,0.4))),
-                           reg %>% filter(ISO!='ATA' & !is.na(ISO))), aes(x = long, y = lat) ) +
-  geom_polygon(aes(group = group, fill = profdpc),color='black',size=.1)+
-  theme_void()+
-  scale_fill_viridis_d() +
-  theme(strip.text.x = element_text(size=12, face="bold"),plot.title = element_text(hjust = 0.5))
-
-PROF_CDR %>% 
-            filter(ttoyear(t)==2100 & Scenario=="1.5C peak" & n=="World") %>% 
-            inner_join(YGROSS) %>%                            
-            inner_join(l %>% make_scen() %>% make_global_sum()%>% rename(pop=value)) %>%
-  mutate(profrel=prof/ygross,profc=prof/pop*1e6)
-          
+ALL_FLOWS %>% mutate(gentax=-gentax,ctx=-ctx,abcost=-abcost,cdrcost=-cdrcost) %>%
+  mutate(net = transfer + gentax + cdrcost + ctx + abcost + cdrrev) %>% 
+  pivot_longer(c(transfer,gentax,cdrcost,ctx,abcost,cdrrev),names_to="Flow") %>% mutate(valuerel=value/ygrossd,netrel=net/ygrossd) %>% 
+  filter(n=="can" & ttoyear(t) >= 2020 & ttoyear(t) <= 2100 & O=="yes" & B=="650" & ssp==2 & dist %in% c("D1","D10")) %>%
+  mutate(Source=case_when( Flow=="abcost" ~ "Abatement costs",
+                           Flow=="cdrcost" ~ "Cost of NETs",
+                           Flow=="ctx" ~ "Carbon tax",
+                           Flow=="gentax" ~ "Other taxes",
+                           Flow=="transfer" ~ "Recycling",
+                           Flow=="cdrrev" ~ "NET revenues" )) %>%
+  ggplot() +
+  geom_area(aes(x=ttoyear(t),y=valuerel,fill=Source),color="black") + 
+  geom_line(data=.%>% filter(Flow %in% c("cdrrev","cdrcost") ) %>% group_by(t,n,file,dist) %>% dplyr::summarise(val=sum(value)/ygrossd[Flow=="cdrrev"] ),
+            aes(x=ttoyear(t),y=val),color="blue",size=1.2,linetype="dotted") +
+  theme_pubr() +
+  scale_y_continuous(labels=scales::percent) +
+  facet_wrap(dist~.,) +
+  ylab('Costs and gains, \n global aggregate [% GDP]') + xlab('') + theme(legend.position = "bottom")

@@ -22,7 +22,7 @@ ssp <- c("ssp1","ssp2","ssp3","ssp4","ssp5")
 coop <- "noncoop"
 budget <-"650"
 cdr_opt <- "geo"
-sens <- "ext"
+sens <- ""
 region_id = "ed57" #for historical data folder
 year0 = 2015
 tstep = 5
