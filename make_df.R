@@ -35,7 +35,14 @@ TRANSFER <- TRANSFER %>% make_scen() %>% rename(transfer=value)
 
 GENTAX <- GENTAX %>% make_scen() %>% rename(gentax=value)
 
-CPRICE <- CPRICE %>% make_scen() 
+CPRICE <- CPRICE %>% make_scen() %>% 
+  
+CPRICE <- CPRICE %>% 
+  rbind(CPRICE %>%
+  inner_join(YGROSS) %>%
+  group_by(t,file,pathdir,ssp,Scenario,B,DIST,COST,TAX,NEG,O,E) %>%
+  summarise(value=weighted.mean(value,ygross)) %>% 
+  mutate(n="World"))
 
 CPRICE_NEG <- CPRICE_NEG %>% make_scen() 
 

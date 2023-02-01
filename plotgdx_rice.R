@@ -71,7 +71,8 @@ make_cumulative <- function(.x,columns=c("n","file"),vars=c("value"),yearmax=210
 source("make_df.R")
 source("make_shapleys.R")
 
-fig1a <- FLOWS %>% select(-trgdprel,-txgdprel) %>% mutate(net = transfer + gentax + dacost + ctx + abcost + dacrev) %>% 
+## FIGURE 1
+fig1a <- FLOWS %>% mutate(net = transfer + gentax + dacost + ctx + abcost + dacrev) %>% 
   pivot_longer(c(transfer,gentax,dacost,ctx,abcost,dacrev),names_to="Flow") %>% mutate(valuerel=value/gdp,netrel=net/gdp) %>% 
   filter(n=="World" & ttoyear(t) >= 2020 & ttoyear(t) <= 2100 & setting==setting_select & O=="yes" & B=="700" & ssp==2) %>%
   mutate(Source=case_when( Flow=="abcost" ~ "Abatement costs",
@@ -99,6 +100,39 @@ fig1b <- ggplot(ineq_weights %>% filter(ttoyear(t) %in% c(2075)) %>%
              aes(x=dist,y=med,color=ineq_elast),size=2,shape=21,fill="white") + theme_pubr() + xlab('Income distribution') + ylab('% of flow falling on decile d, \n country median') + theme(legend.title = element_blank()) +
   scale_y_continuous(labels=scales::percent) +
   scale_color_manual(values=c("#F8766D","#00BA38","#619CFF")) + theme(legend.position = "bottom")+ guides(color=guide_legend(nrow=2))
+
+fig1 <- ggarrange(fig1a,fig1b)
+ggsave("fig1.png",width=13,height=6,dpi=320)
+
+## FIGURE 2
+fig2 <- ggplot(EMITOT %>% filter(n %in% c("World") & ttoyear(t) <= 2100 & 
+                                      file %in% c("ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGbest",
+                                                  "ssp2_B700p_DISTgeo_COSTbest_TAXbest_NEGbest") ) %>% 
+                    mutate(Source=case_when(Source=="eind"~"Industrial emissions",Source=="eland"~ "Land use change",Source=="use"~ "Carbon removal"  ), 
+                           O=case_when(O=="yes"~"With overshoot",
+                                       O=="no"~"Without overshoot") )  %>% mutate(O=as.factor(O)) %>% 
+                    mutate(O=fct_relevel(O,c("With overshoot","Without overshoot"))) )  +
+  geom_area(aes(x=ttoyear(t), y=value,fill=Source)) +
+  geom_line(data=.%>%group_by(O,file,n,t)%>%summarise(e=sum(value)),aes(x=ttoyear(t), y=e), size=1.2) +
+  geom_line(data=CPRICE %>% filter(n %in% c("World") & ttoyear(t) <= 2100 & 
+                 file %in% c("ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGbest",
+                             "ssp2_B700p_DISTgeo_COSTbest_TAXbest_NEGbest") ) %>% 
+         mutate(O=case_when(O=="yes"~"With overshoot", O=="no"~"Without overshoot")) %>% 
+         mutate(O=as.factor(O)) %>% mutate(O=fct_relevel(O,c("With overshoot","Without overshoot"))), 
+         aes(x=ttoyear(t),y=2*value/100),color="red",size=1.2,linetype="dotted") +
+  geom_text(data=CPRICE  %>% filter(n %in% c("World") & ttoyear(t) <= 2100 & 
+                 file %in% c("ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGbest",
+                             "ssp2_B700p_DISTgeo_COSTbest_TAXbest_NEGbest") ) %>% 
+            mutate(O=case_when(O=="yes"~"With overshoot", O=="no"~"Without overshoot"))  %>% 
+            mutate(O=as.factor(O)) %>% mutate(O=fct_relevel(O,c("With overshoot","Without overshoot"))) %>% 
+            filter(n=="World" & B=="700"  & ssp==2) %>% group_by(B,O) %>% filter(value==max(value) | ttoyear(t)==2030),
+          aes(x=ttoyear(t),y=2*value/100+3,label=paste(as.character(round(value)),"$/tCO2")),color="red") +
+  facet_wrap(O~.,) +
+  theme_pubr() +
+  scale_fill_manual(values=c("#66FFFF","#FFCC99","#474826")) +
+  ylab('Emissions and removal [GtCO2/yr]') + xlab('') + theme(legend.position = "bottom", legend.title = element_blank())
+
+ggsave("fig2.png",width=13,height=6,dpi=320)
 
 ## FIGURE 3
 scenarios <- E_NEG %>% select_at(file_group_columns) %>% unique()
@@ -257,40 +291,83 @@ shapleyref %>% inner_join(scenarios) %>%
   ggplot() +
   geom_area(aes(x=ttoyear(t),y=value*100,fill=as.factor(group),color=as.factor(group)),stat="identity") 
 
-shapleyreftheil %>% inner_join(scenarios) %>% 
-  group_by(t,file,group,dec,DIST) %>% summarise(value=sum(value)) %>%
+
+a <- shapleyreftheil %>% inner_join(scenarios) %>% 
+  group_by(t,file,group,dec,DIST,COST) %>% summarise(value=sum(value)) %>%
   filter(file %in% c("ssp2_B700_DISTepc_COSTbest_TAXbest_NEGbest",
                      "ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGbest",
-                     "ssp2_B700_DISThist_COSTbest_TAXbest_NEGbest") & 
-           ttoyear(t) %in% c(2075,2100)) %>%
-  ggplot() +
-  geom_bar(aes(x=DIST,y=value*100,fill=as.factor(group),color=as.factor(group),alpha=dec),stat="identity") +
-  geom_point(data=.%>%group_by(t,file,DIST)%>%summarise(value=sum(value)),
-             aes(x=DIST,y=value*100),shape=3) +
-  facet_wrap(ttoyear(t) ~.,) + xlab('') + ylab('') +
+                     "ssp2_B700_DISTepc_COSThigh_TAXbest_NEGbest",
+                     "ssp2_B700_DISTgeo_COSThigh_TAXbest_NEGbest") & 
+           ttoyear(t) %in% c(2075,2100)) %>% mutate(DIST=as.factor(DIST),group=as.factor(group),COST=as.factor(COST))
+levels(a$DIST) <- list("Global north"="geo","Global south"="epc")
+levels(a$group) <- list("Abatement costs"="1","CDR costs"="2","CDR transfers"="3")
+levels(a$COST) <- list("Low costs"="best","High costs"="high")
+
+ggplot(a) +
+  geom_bar(data=. %>% filter(value>0) %>% group_by(t,file,DIST,COST) %>% summarise(value=sum(value)),aes(x=DIST,y=value*100),fill=NA,stat="identity",color="grey",linetype=2) +
+  geom_bar(data=.%>% filter(group %in% c("CDR costs","CDR transfers")),aes(x=DIST,y=value*100,fill=group,color=group,alpha=dec),stat="identity",color="black") +
+  geom_point(data=.%>% filter(group %in% c("CDR costs","CDR transfers")) %>% group_by(t,file,DIST,COST) %>% summarise(value=sum(value)),
+             aes(x=DIST,y=value*100),shape=3,size=2) +
+  geom_point(data=. %>% group_by(t,file,DIST,COST) %>% summarise(value=sum(value)),
+             aes(x=DIST,y=value*100),shape=1,size=2) +
+  facet_grid(COST~ttoyear(t) ,) + xlab('') + ylab('') +
+  guides(fill=guide_legend(title="Inequality driver"),alpha=guide_legend(title="Inequality contribution")) +
+  scale_fill_manual(values=c("#00BA38","#619CFF")) +
+#  geom_text(data=.%>%filter(value>0 & group=="Low costs" & ttoyear(t)==2075 & DIST=="Global north") %>% 
+#              group_by(t,file,DIST,COST) %>% summarise(value=sum(value)), aes(x=DIST,y=value*1.05),label="Abatement costs contribution") +
   theme_pubr()
+ggsave("fig5.png",width=13,height=10,dpi=400)
 
-inner_join(pop,E_NEG) %>%
-  filter(ttoyear(t) <= 2100) %>%
-  mutate(enegpc=use/pop*1e3) %>%
-  group_by(t) 
+## METHODS FIGURE 1: 
 
-dacum %>% group_by(file) %>% mutate(share=use/sum(use)) %>% ungroup() %>%
-  mutate(breaks=discretize(share,method="fixed",breaks=c(0,2,4,6,8,10))) %>% #
-  inner_join(scenarios) %>% 
-  filter(file %in% c("ssp2_B700_DISTepc_COSTbest_TAXbest_NEGbest",
-                     "ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGbest",
-                     "ssp2_B700_DISThist_COSTbest_TAXbest_NEGbest")) %>%
-  inner_join(reg) %>% filter(iso3!="ATA") %>%
-  ggplot(aes(x=long,y=lat)) +
-  geom_polygon(aes(group = group, fill = breaks),color='black',size=.1) +
-  theme_void()+
-  theme(strip.text.x = element_text(size=12, face="bold"),plot.title = element_text(hjust = 0.5)) +
-  labs(fill="% of global carbon removed") +
-  facet_wrap(DIST ~.,)
+# sd_dist -> standard deviation to generate an income distribution (lognormal)
+# etacdr -> how skewed is ownership of CDR relative to the income distribution (1->distribution neutral,>1 more concentrated to the top)
+# etatax -> how regressive or progressive are income taxes used to pay for CDR revenues
+# prof_mar -> profit margin of CDR, i.e. cprice/avg_cost 
+# rev_gdp -> revenues of CDR over GDP
+red_model <- function(sd_dist=1, etacdr=2, etatax=1, prof_mar=2, rev_gdp= 0.05){
+  dist0 <- qlnorm(p=seq(0.05,0.95,by=0.1),mean=1,sdlog= sd_dist)
+  dist0 <- dist0/sum(dist0)
+  out0 <- reldist::gini(dist0)
+  dist <- dist0 + rev_gdp * ((1-1/prof_mar)*dist0^etacdr/sum(dist0^etacdr) - dist0^etatax/sum(dist0^etatax)) 
+  dist <- dist/sum(dist)
+  out <-  reldist::gini(dist) 
+  return(c("out0"=out0*100,"out"=out*100))
+}
 
+gini0 <- tibble(sd_dist=c(),gini0=c())
+for (sd in seq(0.5,1.5,by=0.5)) {
+  gini0 <- rbind(gini0,
+                 tibble(sd_dist=sd,gini0=red_model(sd_dist=sd)["out0"]))
+}
+map_toy <- tibble(expand.grid(sd_dist=seq(0.5,1.5,by=0.5),
+                              deta=seq(-1,2,by=0.1),
+                              etatax=seq(0.6,1.8,by=0.4),
+                              prof_mar=seq(1,10,by=0.5),
+                              rev_gdp=seq(0.05,0.2,by=0.05))) %>%
+  rowwise() %>%
+  mutate(gini=red_model(sd_dist=sd_dist, etacdr=etatax+deta, etatax=etatax, prof_mar=prof_mar, rev_gdp=rev_gdp)["out"]) %>% 
+  inner_join(gini0) %>% mutate(dgini=gini-gini0)
 
-##### fake dataset: properties of the theil index
+require(ggrepel)
 
-
-  
+ggplot(map_toy %>% ungroup() %>% filter(sd_dist==1 & rev_gdp==0.05) %>%
+         mutate(Taxation=as.factor(case_when(round(etatax,1)==0.6 ~ "Regressive tax",
+                                             round(etatax,1)==1 ~ "Neutral tax",
+                                             round(etatax,1)==1.4 ~ "Best fit",
+                                             round(etatax,1)==1.8 ~ "Progressive tax")))) +
+  geom_contour_filled(aes(x=deta,y=prof_mar,z=dgini)) +
+  geom_contour(aes(x=deta,y=prof_mar,z=dgini),color="red",breaks=c(-1000,0,+1000),size=1.3) +
+  geom_vline(data=.%>%
+               mutate(etacdr=etatax+deta) %>%
+               filter(round(etacdr,1) %in% c(1,1.4,1.8,2.2)) %>%
+               mutate(`Equity concentration`=case_when(round(etacdr,1)==1 ~ "Neutral",
+                                                       round(etacdr,1)==1.4 ~ "Low",
+                                                       round(etacdr,1)==1.8 ~ "Best fit",
+                                                       round(etacdr,1)==2.2 ~ "High") ),
+             aes(xintercept=deta,linetype=paste0(`Equity concentration`,": ",etacdr)),size=1.3,color="blue") +
+  facet_wrap(.~paste0(Taxation,": ",etatax)) + theme_pubr() +
+  ylab('Profit margin for CDR [cprice/avg cost]') +
+  xlab(paste0('Intrinstic regressivity of financing CDR [etacdr-etatax]')) +
+  labs(fill = 'Gini - gini0',linetype="Equity concentration (relative to income distribution)")
+ggsave("mfig1.png",width=15,height=10,dpi=320)
