@@ -35,7 +35,7 @@ TRANSFER <- TRANSFER %>% make_scen() %>% rename(transfer=value)
 
 GENTAX <- GENTAX %>% make_scen() %>% rename(gentax=value)
 
-CPRICE <- CPRICE %>% make_scen() %>% 
+CPRICE <- CPRICE %>% make_scen() 
   
 CPRICE <- CPRICE %>% 
   rbind(CPRICE %>%
@@ -139,3 +139,32 @@ COSTS_DIST <- YGROSS_DIST %>%
 COSTS <-  YGROSS %>%
   full_join(Y %>% filter(t>=1)) %>%
   mutate(cost=(ygross-gdp)/ygross)
+
+scenarios <- E_NEG %>% select_at(file_group_columns) %>% unique()
+
+abcum <- ABATEDEMI %>%
+  filter(ttoyear(t) <= 2100) %>%
+  group_by(file,n) %>% 
+  complete(t=seq(min(t), max(t), 0.2)) %>% 
+  mutate(abate=approxfun(t, abate)(t)) %>%
+  group_by(file,n) %>% 
+  summarise(abate=sum(abate)) 
+
+dacum <- E_NEG %>%
+  filter(ttoyear(t) <= 2100) %>%
+  group_by(file,n) %>% 
+  complete(t=seq(min(t), max(t), 0.2)) %>% 
+  mutate(use=approxfun(t, use)(t)) %>%
+  group_by(file,n) %>% 
+  summarise(use=sum(use)) 
+
+require(arules)
+share <- inner_join(abcum,dacum) %>% 
+  group_by(file) %>%
+  mutate(breaks=discretize(use/(use+abate)*100,breaks=4))
+
+maps <- map_data("world")
+maps=data.table(maps)
+maps$ISO = countrycode(maps$region, origin = 'country.name', destination =  'iso3c')
+maps=as_tibble(maps)
+reg <- left_join(maps %>% rename(iso3=ISO),witchtools::region_mappings$enerdata56 %>% rename(n=enerdata56))
