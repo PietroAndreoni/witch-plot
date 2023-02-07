@@ -83,37 +83,6 @@ shapleyref <- ALL_FLOWS %>% select(-yab,-ynet) %>%
   group_by(t,file) %>%
   do(owen(zid_gini,list(c("abcost","err"),c("cdrrev","cdrcost","gentax"), c("transfer","ctx")), data=.)) 
 
-print("Theil between") 
-
-shapleyreftheil <- ALL_FLOWS %>%
-  filter(file %in% c("ssp2_B700_DISTepc_COSTbest_TAXbest_NEGbest",
-                     "ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGbest",
-                     "ssp2_B700_DISTepc_COSThigh_TAXbest_NEGbest",
-                     "ssp2_B700_DISTgeo_COSThigh_TAXbest_NEGbest") & 
-           ttoyear(t) %in% c(2050,2075,2100)) %>%
-  inner_join(ykali_dist) %>%
-  inner_join(pop %>% mutate(pop=pop/10)) %>% 
-  mutate(abcost=-abcost,cdrcost=-cdrcost,ctx=-ctx,gentax=-gentax,err=ygrossd-ykali) %>%
-  group_by(t,file) %>%
-  do(owen(zid_theilb,list(c("abcost","err"),c("cdrcost"), c("cdrrev","gentax","transfer","ctx")), data=.)) %>%
-  mutate(dec="between") 
-
-print("Theil within") 
-
-shapleyreftheil <- ALL_FLOWS %>%
-  filter(file %in% c("ssp2_B700_DISTepc_COSTbest_TAXbest_NEGbest",
-                     "ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGbest",
-                     "ssp2_B700_DISTepc_COSThigh_TAXbest_NEGbest",
-                     "ssp2_B700_DISTgeo_COSThigh_TAXbest_NEGbest") & 
-           ttoyear(t) %in% c(2050,2075,2100)) %>%
-  inner_join(ykali_dist) %>%
-  inner_join(pop %>% mutate(pop=pop/10)) %>% 
-  mutate(abcost=-abcost,cdrcost=-cdrcost,ctx=-ctx,gentax=-gentax,err=ygrossd-ykali) %>%
-  group_by(t,file) %>%
-  do(owen(zid_theilw,list(c("abcost","err"),c("cdrcost"), c("cdrrev","gentax","transfer","ctx")), data=.)) %>%
-  mutate(dec="within") %>%
-  rbind(shapleyreftheil) 
-
 shapleyrefall <- ALL_FLOWS %>% select(-yab,-ynet) %>%
   filter(ttoyear(t)<=2100 & ttoyear(t)>=2020 & file %in% c("ssp2_B700_DISTepc_COSTbest_TAXbest_NEGbest")) %>%
   inner_join(ykali_dist) %>%
@@ -130,4 +99,66 @@ shapleyOall <- ALL_FLOWS %>% select(-yab,-ynet) %>%
   mutate(abcost=-abcost,cdrcost=-cdrcost,ctx=-ctx,gentax=-gentax,err=ygrossd-ykali) %>%
   group_by(t,n) %>%
   do(owen(zid_gini,list(c("abcost","err"),c("cdrrev","cdrcost","gentax"), c("transfer","ctx")), data=., scen1= "ssp2_B700p_DISTgeo_COSTbest_TAXbest_NEGbest", scen2= "ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGbest"))
+
+print("Theil between") 
+
+files <- c("ssp2_B700_DISTepc_COSTbest_TAXbest_NEGbest",
+  "ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGbest",
+  "ssp2_B700_DISTepc_COSThigh_TAXbest_NEGbest",
+  "ssp2_B700_DISTgeo_COSThigh_TAXbest_NEGbest")
+
+shapleyreftheil <- ALL_FLOWS %>%
+  filter(file %in% files & 
+           ttoyear(t) %in% c(2050,2075,2100)) %>%
+  inner_join(ykali_dist) %>%
+  inner_join(pop %>% mutate(pop=pop/10)) %>% 
+  mutate(abcost=-abcost,cdrcost=-cdrcost,ctx=-ctx,gentax=-gentax,err=ygrossd-ykali) %>%
+  group_by(t,file) %>%
+  do(owen(zid_theilb,list(c("abcost","err"),c("cdrcost"), c("cdrrev","gentax","transfer","ctx")), data=.)) %>%
+  mutate(dec="between") 
+
+print("Theil within") 
+
+shapleyreftheil <- ALL_FLOWS %>%
+  filter(file %in% files & 
+           ttoyear(t) %in% c(2050,2075,2100)) %>%
+  inner_join(ykali_dist) %>%
+  inner_join(pop %>% mutate(pop=pop/10)) %>% 
+  mutate(abcost=-abcost,cdrcost=-cdrcost,ctx=-ctx,gentax=-gentax,err=ygrossd-ykali) %>%
+  group_by(t,file) %>%
+  do(owen(zid_theilw,list(c("abcost","err"),c("cdrcost"), c("cdrrev","gentax","transfer","ctx")), data=.)) %>%
+  mutate(dec="within") %>%
+  rbind(shapleyreftheil) 
+
+###### SI 
+files <- c("ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGbest",
+           "ssp2_B700_DISTgeo_COSTbest_TAXlow_NEGbest",
+           "ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGhigh",
+           "ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGlow",
+           "ssp2_B700_DISTgeo_COSTbest_TAXhigh_NEGbest")
+
+print("Theil between, SI") 
+
+shapleyreftheil <- ALL_FLOWS %>%
+  filter(file %in% files & 
+           ttoyear(t) %in% c(2075,2100)) %>%
+  inner_join(ykali_dist) %>%
+  inner_join(pop %>% mutate(pop=pop/10)) %>% 
+  mutate(abcost=-abcost,cdrcost=-cdrcost,ctx=-ctx,gentax=-gentax,err=ygrossd-ykali) %>%
+  group_by(t,file) %>%
+  do(owen(zid_theilb,list(c("abcost","err"),c("cdrcost"), c("cdrrev","gentax","transfer","ctx")), data=.)) %>%
+  mutate(dec="between") 
+
+print("Theil within, SI") 
+
+shapleyreftheil <- ALL_FLOWS %>%
+  filter(file %in% files & 
+           ttoyear(t) %in% c(2075,2100)) %>%
+  inner_join(ykali_dist) %>%
+  inner_join(pop %>% mutate(pop=pop/10)) %>% 
+  mutate(abcost=-abcost,cdrcost=-cdrcost,ctx=-ctx,gentax=-gentax,err=ygrossd-ykali) %>%
+  group_by(t,file) %>%
+  do(owen(zid_theilw,list(c("abcost","err"),c("cdrcost"), c("cdrrev","gentax","transfer","ctx")), data=.)) %>%
+  mutate(dec="within") %>%
+  rbind(shapleyreftheil) 
 
