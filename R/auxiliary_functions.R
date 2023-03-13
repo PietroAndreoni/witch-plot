@@ -125,28 +125,23 @@ make_map_df <- function(region_mapping="witch17") {
   return(reg)}
 
 #make global transformations: options sum,mean, median, weighted mean (w_mean)
-make_global_tr <- function(data,cols=c("t","n","file"),weights="w",nagg="sum") { 
-  group_cols <- arules::setdiff(cols,"n")
-  nms <- arules::setdiff(names(data),cols)
-  if(nagg=="sum"){data <- data %>% group_by_at(group_cols) %>% summarise_at(., nms, sum) %>% mutate(n="World")}  
-  if(nagg=="mean"){data <- data %>% group_by_at(group_cols) %>% summarise_at(., nms, mean) %>% mutate(n="World")}
-  if(nagg=="median"){data <- data %>% group_by_at(group_cols) %>% summarise_at(., nms, median) %>% mutate(n="World")}
-  if(nagg=="w_mean"){
-    nms <- arules::setdiff(names(data),c(cols,weights))
-    data <- data %>% group_by_at(group_cols) %>% summarise_at(., nms, ~weighted.mean(.,w) ) %>% mutate(n="World")}
+make_global_tr <- function(data,group_cols=c("t","file"),sum_cols=c("value"),weights="w",nagg="sum") { 
+  if(nagg=="sum") data <- data %>% group_by_at(group_cols) %>% summarise_at(., sum_cols, sum) %>% mutate(n="World") 
+  else if(nagg=="mean") data <- data %>% group_by_at(group_cols) %>% summarise_at(., sum_cols, mean) %>% mutate(n="World")
+  else if(nagg=="median") data <- data %>% group_by_at(group_cols) %>% summarise_at(., sum_cols, median) %>% mutate(n="World")
+  else if(nagg=="w_mean") data <- data %>% group_by_at(group_cols) %>% summarise_at(sum_cols, ~weighted.mean(.,w=.[[weights]] ) ) %>% mutate(n="World")
+  else stop("transformation not supported")
   return(data) }
 
 # make cumulative of variables
-make_cumulative <- function(data,cols=c("t","n","file"),yearstart=2020,yearend=2100,dr=0) { 
-  group_cols <- arules::setdiff(cols,"t")
-  nms <- arules::setdiff(names(data),cols)
-  
+make_cumulative <- function(data,group_cols=c("n","file"), cols_sum=c("value"),exclude_cols=c(""),yearstart=2020,yearend=2100,dr=0) { 
   data <- data %>% 
     filter(ttoyear(t)>=yearstart & ttoyear(t)<=yearend) %>%
-    group_by_at(group_cols) %>% 
+    group_by_at(setdiff(names(data),c("t",cols_sum,exclude_cols))) %>% 
     complete(t=full_seq(t,0.2)) %>% 
-    mutate_at(., nms, zoo::na.approx ) %>%
-    summarise_at(nms, ~sum(./((1+dr)^(ttoyear(t)-yearstart)) ) ) %>%
+    mutate_at(., cols_sum, zoo::na.approx ) %>%
+    group_by_at(group_cols) %>% 
+    summarise_at(cols_sum, sum ) %>%
     mutate(t=paste0(yearstart,"to",yearend))
   return(data) }
 
