@@ -137,8 +137,8 @@ make_global_tr <- function(data,group_cols=c("t","file"),sum_cols=c("value"),wei
 make_cumulative <- function(data,group_cols=c("n","file"), cols_sum=c("value"),exclude_cols=c(""),yearstart=2020,yearend=2100,dr=0) { 
   data <- data %>% 
     filter(ttoyear(t)>=yearstart & ttoyear(t)<=yearend) %>%
-    group_by_at(setdiff(names(data),c("t",cols_sum,exclude_cols))) %>% 
-    complete(t=full_seq(t,0.2)) %>% 
+    group_by_at(arules::setdiff(names(data),c("t",cols_sum,exclude_cols))) %>% 
+    complete(t=tidyr::full_seq(t,0.2)) %>% 
     mutate_at(., cols_sum, zoo::na.approx ) %>%
     group_by_at(group_cols) %>% 
     summarise_at(cols_sum, sum ) %>%

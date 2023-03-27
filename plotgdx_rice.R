@@ -18,6 +18,8 @@ yearmax = 2300
 #Initialize default options, load all witch and other functionsget
 source('R/witch_functions.R')
 
+revalue <- plyr::revalue
+
 #mapping of variables to historical and validation statistics and unit conversion to WITCH units
 map_var_hist <- fread("varname_model, set_model, element_model, var_witch, set_witch, element_witch, conv
 Y, , , SOCECON, *, gdp-ppp, 1
