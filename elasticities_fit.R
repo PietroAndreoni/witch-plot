@@ -4,10 +4,12 @@ require(tidyverse)
 require(plm)
 require(nls2)
 require(mlr3measures)
+require(wid)
 
 ##### FIRST: compute elasticities from decile based data. Using year>2000 data  
 inequality_s_wid <- fread('data/inequality-wid-wid_data.csv')
 inequality_s_wid <- inequality_s_wid[quantile %in% c(paste0("D",seq(1,10)) ),]
+
 
 taxsh <- inequality_s_wid %>%
   filter(variable %in% c("pretaxinc","dispinc")) %>%
@@ -139,3 +141,49 @@ summary(olstax)
 ggplot(inner_join(gini,etatax),aes(x=gini,y=etatax)) +
   geom_point(aes(color=iso3,alpha=year)) + 
   geom_smooth(method="lm") + theme(legend.position="none")
+
+##### carbon elasticities 
+
+#carbon inequality variables
+carbon_footprint <- download_wid(
+  indicators = c("lpfghg"),
+  areas = "all", 
+  years = "all",
+  perc = perc<-c("p0p10","p10p20","p20p30","p30p40","p40p50","p50p60","p60p70","p70p80","p80p90","p90p100"),
+  ages = 999,
+  pop = "i",
+  include_extrapolations = FALSE )
+
+# rename the quantiles
+carbon_footprint$percentile <-revalue(carbon_footprint$percentile, c("p0p10"="D1", "p10p20"="D2", "p20p30"="D3", "p30p40"="D4", "p40p50"="D5",
+                                        "p50p60"="D6", "p60p70"="D7", "p70p80"="D8", "p80p90"="D9", "p90p100"="D10"))
+
+carbon_footprint <- carbon_footprint %>% 
+  rename(quantile=percentile,cf=value,iso3=country) %>% 
+  select(-variable) %>%
+  group_by(iso3,year) %>%
+  mutate(cf_sh=cf/sum(cf))
+  
+carbon_footprint$iso3<-countrycode(carbon_footprint$iso3, origin ="iso2c", destination="iso3c")
+
+etac <- carbon_footprint %>% 
+  inner_join(inequality_s_wid %>%
+               filter(year>=2000 & variable %in% c("pretaxinc_sh")) %>% select(-variable) %>% rename(pretaxinc_sh=value)) %>%
+  drop_na() %>%
+  group_by(iso3,year) %>%
+  mutate(n=n()) %>%
+  filter(n==10) %>%
+  ungroup() %>% 
+  mutate(x=pretaxinc_sh,y=cf_sh) %>%
+  group_by(iso3,year) %>%
+  summarise(eta=coef(nls(y ~ I(x^power/sum(x^power)),start=list(power=1)))[[1]] )
+summary(etac)
+
+olstax <-lm(eta~value,data=inner_join(etac,inequality_s_wid %>%
+                                          filter(variable %in% c("pretaxinc")) %>% group_by(iso3,year) %>% summarise(value=sum(value))) %>% 
+              drop_na() %>% ungroup())
+
+ggplot(inner_join(etac,inequality_s_wid %>%
+                    filter(variable %in% c("pretaxinc")) %>% group_by(iso3,year) %>% summarise(value=sum(value))) %>% 
+         drop_na() %>% ungroup() %>% filter(value<5 & eta < 1.1)) +
+  geom_point(aes(x=value,y=eta))

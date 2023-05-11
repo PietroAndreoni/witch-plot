@@ -53,10 +53,10 @@ make_global_sum <- function(.x,vars=c("value")) {
           summarise_at(vars,sum) %>%
           mutate(n="World"),fill=TRUE) }
 
-make_global_mean <- function(.x,vars=c("value"),w=c("weight") ) {
+make_global_mean <- function(.x,columns=c("n","file"),vars=c("value"),w=c("weight") ) {
   rbind(.x, .x %>% 
           group_by_at(c("t","pathdir",file_group_columns)) %>%
-          summarise_at(vars, weighted.mean(.,w=w) ) %>%
+          summarise_at(vars, weighted.mean,w=w) %>%
           mutate(n="World")) }
 
 make_cumulative <- function(.x,columns=c("n","file"),vars=c("value"),yearmax=2100) {      
