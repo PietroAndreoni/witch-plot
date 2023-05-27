@@ -85,8 +85,6 @@ FLOWS <-  rbind(FLOWS, FLOWS %>%
 E_NEG <- make_global_sum(E_NEG %>% make_scen()) %>%
   rename(use=value)
 
-all_scenarios <- E_NEG %>% ungroup() %>% select_at(file_group_columns) %>% unique() 
-
 dacum <- E_NEG %>% 
   filter(ttoyear(t) <= 2100) %>%
   group_by_at(c("n", "pathdir", file_group_columns)) %>% 

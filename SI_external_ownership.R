@@ -4,44 +4,6 @@
 get_witch_simple("share_ext_fin_pos")
 share_ext_fin_pos <- share_ext_fin_pos %>% make_scen()
 
-a <- ginit %>% filter(file %in% c("ssp2_B700e_DISTgeo_COSTbest_TAXbest_NEGbest",
-                                  "ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGbest")) %>%
-  full_join(share_ext_fin_pos %>% filter(pos=="assets")) %>%
-  group_by(t,n) %>%
-  mutate(gini0 = gini - gini[file=="ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGbest"]) %>%
-  filter(file=="ssp2_B700e_DISTgeo_COSTbest_TAXbest_NEGbest" & ttoyear(t) %in% c(2075,2100) ) 
-a$n = factor(a$n, levels = unique(a[order(-a$value),]$n))
-
-ggplot(a) +
-  geom_point(aes(x=n,y=gini0*100,color=as.factor(ttoyear(t)))) + coord_flip()
-
-a <- Y %>% filter(file %in% c("ssp2_B700e_DISTgeo_COSTbest_TAXbest_NEGbest",
-                              "ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGbest") & n!="World") %>%
-  full_join(share_ext_fin_pos %>% filter(pos=="assets")) %>%
-  group_by(t,n) %>%
-  mutate(gdp0 = (gdp - gdp[file=="ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGbest"])/gdp[file=="ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGbest"] ) %>%
-  filter(file=="ssp2_B700e_DISTgeo_COSTbest_TAXbest_NEGbest" & ttoyear(t) %in% c(2075,2100) ) 
-
-a$n = factor(a$n, levels = unique(a[order(-a$value),]$n))
-ggplot(a) +
-  geom_point(aes(x=n,y=gdp0*100,color=as.factor(ttoyear(t)))) + coord_flip()
-
-get_witch_simple("POOL_FIN")
-POOL_FIN <- POOL_FIN %>% make_scen()
-check <- COST_CDR %>% 
-  filter(file %in% c("ssp2_B700e_DISTgeo_COSTbest_TAXbest_NEGbest") & n!="World")  %>%
-  inner_join(REV_CDR) %>% 
-  group_by(file,t) %>%
-  summarise(pool_in=sum((cdrrev-cdrcost)*0.05)) %>% inner_join(POOL_FIN) %>%
-  mutate(check=value/pool_in)
-
-check2 <- Y_DIST %>% 
-  filter(file %in% c("ssp2_B700e_DISTgeo_COSTbest_TAXbest_NEGbest")) %>%
-  group_by(file,t,n) %>%
-  summarise(value=sum(value)) %>% 
-  inner_join(Y) %>%
-  mutate(check2=gdp/value)
-
 ##### simple model of external ownership
 # percentage of the economy held abroad
 new_y <- tibble()
@@ -52,9 +14,9 @@ new_y <- Y_DIST %>% rename(gdp=value) %>%
   inner_join(REV_CDR %>% full_join(ineq_weights %>% filter(ineq_elast=="carbon_rev")) %>% mutate(revd=cdrrev*value) %>% select(-value,-ineq_elast,-cdrrev) ) %>%
   inner_join(COST_CDR %>% full_join(ineq_weights %>% filter(ineq_elast=="carbon_rev")) %>% mutate(costd=cdrcost*value) %>% select(-value,-ineq_elast,-cdrcost) ) %>%
   inner_join(share_ext_fin_pos %>% filter(pos=="assets") %>% rename(asset_share=value)  %>% select(t,n,asset_share)) %>%
-  inner_join(ineq_weights %>% filter(ineq_elast=="carbon_rev") %>% rename(ela=value)) %>%
+  inner_join(ineq_weights %>% filter(ineq_elast=="carbon_rev") %>% rename(crev=value)) %>%
   group_by(t,file) %>%
-  mutate(ynew = gdp - (revd-costd)*frac_abroad + sum((revd-costd)*frac_abroad) * ela * asset_share ) %>% select(-asset_share,-ela) %>%
+  mutate(ynew = gdp - (revd-costd)*frac_abroad + sum((revd-costd)*frac_abroad) * crev * asset_share ) %>% select(-asset_share,-ela) %>%
   mutate(frac=frac_abroad) %>%
   rbind(new_y) }
 
@@ -72,14 +34,14 @@ gini_new$DIST = factor(gini_new$DIST)
 levels(gini_new$DIST) <- list("Global north"="geo","Global south"="epc")
 
 # within country gini index
-plot_gini <- gini_new %>% filter(ttoyear(t) %in% c(2050,2075,2100)) %>% 
+plot_gini <- gini_new %>% 
   group_by(t,file,frac,DIST) %>%
-  mutate(breaks=discretize(asset_share*100,breaks=4,method="frequency")) %>%
+  mutate(breaks=arules::discretize(asset_share*100,breaks=4,method="frequency")) %>%
   group_by(breaks,t,file,frac,DIST) %>%
   summarise(med=median(ginirel),min=quantile(ginirel,0.33),max=quantile(ginirel,0.66)) 
 levels(plot_gini$breaks) <- list("low"="[0.0235,0.155)","medium"="[0.155,0.421)","high"="[0.421,1.78)","very high"="[1.78,15.8]")
 
-fig2a <- ggplot(plot_gini) +
+fig2a <- ggplot(plot_gini %>% filter(ttoyear(t) %in% c(2050,2075,2100))) +
   geom_point(aes(x=breaks,y=med*100,color=as.factor(ttoyear(t))),size=3) +
   geom_path(aes(x=breaks,y=med*100,color=as.factor(ttoyear(t)),group=as.factor(ttoyear(t)))) +
   geom_ribbon(aes(x=breaks,ymin=min*100,ymax=max*100,fill=as.factor(ttoyear(t)),group=as.factor(ttoyear(t))),alpha=0.2) +
@@ -88,6 +50,14 @@ fig2a <- ggplot(plot_gini) +
   facet_grid(DIST~frac,scales="free_x") + theme_pubr() + geom_hline(yintercept=0,color="grey") + ylab("Inequality variation [Gini points]") + xlab("") +
   guides(color = guide_legend(title=NULL),fill = guide_legend(title=NULL))
 
+ggplot(plot_gini %>% filter(DIST=="Global north")) +
+  geom_point(data=.%>%filter(ttoyear(t)%%10==0),aes(x=ttoyear(t),y=med*100,color=breaks,alpha=as.character(frac) ),size=3) +
+  geom_line(aes(x=ttoyear(t),y=med*100,color=breaks,group=frac,alpha=as.character(frac) ),linewidth=2) +
+  scale_alpha_manual(values=c(0.3,0.5,0.7,1),labels=c("5 %","10 %","15 %","20 %")) +
+  facet_wrap(breaks~.,) +
+  ggpubr::theme_pubr() + geom_hline(yintercept=0,color="grey") + ylab("Inequality variation [Gini points]") + xlab("") +
+  guides(color = "none",alpha = guide_legend(title=NULL))
+ggsave("SIH_fig1.png",width=11.7,height=10,dpi=320)
 #within country gdp loss
 plot_y <- new_y %>% filter(ttoyear(t) %in% c(2050,2075,2100)) %>% 
   inner_join(share_ext_fin_pos %>% filter(pos=="assets") %>% rename(asset_share=value) %>% select(t,n,asset_share)) %>% inner_join(scenarios) %>%
