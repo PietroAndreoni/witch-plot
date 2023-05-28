@@ -20,8 +20,8 @@ new_y <- Y_DIST %>% rename(gdp=value) %>%
   mutate(taxfrac = ifelse(sum(gentax)>prof,1,sum(gentax)/prof ) ) %>%
   inner_join(ineq_weights %>% filter(ineq_elast=="carbon_rev") %>% rename(crev=value) %>% select(-ineq_elast) ) %>%
   inner_join(ineq_weights %>% filter(ineq_elast=="tax") %>% rename(tax=value) %>% select(-ineq_elast) ) %>%
-  inner_join(ineq_weights %>% filter(ineq_elast=="abatement") %>% rename(ctax=value) %>% select(-ineq_elast) ) %>%
-  mutate(ynew = gdp + prof*(tax*taxfrac + ctax*(1-taxfrac) - crev ) ) %>% 
+  inner_join(ineq_weights %>% filter(ineq_elast=="redist") %>% rename(redist=value) %>% select(-ineq_elast) ) %>%
+  mutate(ynew = gdp + prof*(tax*taxfrac + redist*(1-taxfrac) - crev ) ) %>% 
   mutate(cap=paste0(as.character((1-profit_cap)*100)," %")) %>%
   select(t,n,file,dist,cap,ynew,gdp,taxfrac) %>%
   rbind(new_y) 
@@ -88,8 +88,8 @@ plot_gini$breaks <- ordered(plot_gini$breaks, levels=c("Low","Medium","High","Ve
 ggplot(plot_gini) +
   geom_point(data=.%>%filter(ttoyear(t)%%10==0 & cap!="neutral"),aes(x=ttoyear(t),y=med,color=breaks,alpha=cap),size=3) +
   geom_line(data=.%>%filter(cap!="neutral"),aes(x=ttoyear(t),y=med,color=breaks,group=cap,alpha=cap),linewidth=2) +
-  geom_point(data=.%>%filter(ttoyear(t)%%10==0 & cap=="neutral"),aes(x=ttoyear(t),y=med),color="black",size=3) +
-  geom_line(data=.%>%filter(cap=="neutral"),aes(x=ttoyear(t),y=med,group=cap),color="black",linewidth=2) +
+#  geom_point(data=.%>%filter(ttoyear(t)%%10==0 & cap=="neutral"),aes(x=ttoyear(t),y=med),color="black",size=3) +
+  geom_line(data=.%>%filter(cap=="neutral"),aes(x=ttoyear(t),y=med,group=cap),color="black",linewidth=2,linetype=2) +
   facet_wrap(breaks~.,) +
   scale_alpha_manual(values=c(0.5,0.6,0.7,0.8,1,1),breaks = c("0 %","25 %","50 %","75 %","100 %","neutral")) +
   scale_color_manual(values= scales::hue_pal()(4) ) +
