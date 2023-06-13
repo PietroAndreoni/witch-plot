@@ -21,7 +21,7 @@ get_witch_simple("pop")
 
 pop <- pop %>% make_scen() %>% rename(pop=value) 
 
-YGROSS <- YGROSS %>% make_scen()  %>% make_global_sum() %>% rename(ygross=value)
+YGROSS <- YGROSS %>% make_scen() %>% make_global_sum() %>% rename(ygross=value)
 
 ABATECOST <- ABATECOST %>% make_scen() %>% rename(abcost=value)
 
@@ -40,7 +40,7 @@ CPRICE <- CPRICE %>% make_scen()
 CPRICE <- CPRICE %>% 
   rbind(CPRICE %>%
   inner_join(YGROSS) %>%
-  group_by(t,file,pathdir,ssp,Scenario,B,DIST,COST,TAX,NEG,O,E) %>%
+  group_by_at(c("t",file_group_columns)) %>%
   summarise(value=weighted.mean(value,ygross)) %>% 
   mutate(n="World"))
 
@@ -156,10 +156,10 @@ dacum <- E_NEG %>%
   group_by(file,n) %>% 
   summarise(use=sum(use)) 
 
-require(arules)
 share <- inner_join(abcum,dacum) %>% 
   group_by(file) %>%
-  mutate(breaks=discretize(use/(use+abate)*100,breaks=4))
+  mutate(breaks=arules::discretize(use/(use+abate)*100,breaks=4),
+         breaksname=arules::discretize(use/(use+abate)*100,breaks=4,labels=c("Low","Medium","High","Very high")))
 
 maps <- map_data("world")
 maps=data.table(maps)

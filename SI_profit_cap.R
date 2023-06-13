@@ -15,12 +15,13 @@ new_y <- Y_DIST %>% rename(gdp=value) %>%
   inner_join(EIND) %>%
   inner_join(E_NEG) %>%
   inner_join(GENTAX)  %>%
+  rowwise() %>% mutate(prof=profit_cap * max(cdrrev-cdrcost,0) ) %>%
   group_by(file,t,n) %>%
-  mutate(prof=profit_cap * sum(max(cdrrev-cdrcost,0)) ) %>%
   mutate(taxfrac = ifelse(sum(gentax)>prof,1,sum(gentax)/prof ) ) %>%
   inner_join(ineq_weights %>% filter(ineq_elast=="carbon_rev") %>% rename(crev=value) %>% select(-ineq_elast) ) %>%
   inner_join(ineq_weights %>% filter(ineq_elast=="tax") %>% rename(tax=value) %>% select(-ineq_elast) ) %>%
   inner_join(ineq_weights %>% filter(ineq_elast=="redist") %>% rename(redist=value) %>% select(-ineq_elast) ) %>%
+  ungroup() %>%
   mutate(ynew = gdp + prof*(tax*taxfrac + redist*(1-taxfrac) - crev ) ) %>% 
   mutate(cap=paste0(as.character((1-profit_cap)*100)," %")) %>%
   select(t,n,file,dist,cap,ynew,gdp,taxfrac) %>%
@@ -32,9 +33,9 @@ prof <- REV_CDR  %>%
   rowwise() %>% mutate(prof=ifelse((cdrrev-cdrcost)>=0,(1-profit_cap)*(cdrrev-cdrcost),cdrrev-cdrcost)) %>%
   group_by(file,n,O) %>% 
   complete(t=seq(min(t), max(t), 0.2)) %>% 
-  mutate(prof=approxfun(t, prof)(t),cdrcost=approxfun(t, cdrcost)(t),) %>%
+  mutate(prof=approxfun(t, prof)(t),cdrcost=approxfun(t, cdrcost)(t),cdrrev=approxfun(t, cdrrev)(t)) %>%
   group_by(file,n) %>% 
-  mutate(profit_margin=cumsum(prof / (1 + 0.06)^(ttoyear(t)-2020) ) / cumsum(cdrcost / (1 + 0.06)^(ttoyear(t)-2020) ) ) %>%  
+  mutate(profit_margin=cumsum(prof / (1 + 0.06)^(ttoyear(t)-2020) ) / cumsum(cdrrev / (1 + 0.06)^(ttoyear(t)-2020)) ) %>%  
   mutate(cap=paste0(as.character((1-profit_cap)*100)," %")) %>%
   rbind(prof)  }
 
@@ -69,13 +70,6 @@ plot_gini <- gini_new  %>%
   summarise(med=median(ginirel0),min=quantile(ginirel0,0.33),max=quantile(ginirel0,0.66)) %>%
   mutate(breaks=as.factor(as.character(breaks)))
 
-plot_frac <- new_y  %>% 
-  inner_join(share) %>%
-  inner_join(el_coeff %>% filter(ineq_elast=="abatement")) %>%
-  mutate(ela_eq= taxfrac*value + (1-taxfrac)*1.4) %>%
-  group_by(t,file,cap,breaks) %>%
-  summarise(med=median(ela_eq))
-            
 breaksnames <- c("[0.147,3.45)"="Low","[3.45,8.12)"="Medium","[8.12,18.1)"="High","[18.1,65.9]"="Very high")
 
 # Update the levels of the 'breaks' column in your data frame
@@ -99,9 +93,7 @@ ggsave("SIPM_fig1.png",width=11.7,height=10,dpi=320)
 
 plot_prof <- prof %>% 
   inner_join(share) %>% mutate(cap = factor(cap,levels=c("0 %","25 %","50 %","75 %","100 %","neutral"),ordered=TRUE))
-# Update the levels of the 'breaks' column in your data frame
 
-levels(plot_prof$breaks) <- breaksnames
 plot_prof$breaks <- factor(plot_prof$breaks, levels = names(breaksnames))
 
 # Assign the new level names
@@ -120,4 +112,4 @@ ggplot(plot_prof ) +
   scale_alpha_manual(values=c(0.5,0.6,0.7,0.8,1,1),breaks = c("0 %","25 %","50 %","75 %","100 %","neutral")) +
   scale_fill_manual(values= scales::hue_pal()(4) ) +
   guides(fill = guide_legend(title=NULL))
-ggsave("SIPM_fig2.png",width=11.7,height=10,dpi=320)
+ggsave("SIPM_fig2.png",width=9,height=8,dpi=320)
