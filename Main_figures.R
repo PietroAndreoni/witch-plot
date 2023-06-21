@@ -4,9 +4,9 @@ fig1a <- FLOWS %>% mutate(net = transfer + gentax + cdrcost + ctx + abcost + cdr
   filter(n=="World" & ttoyear(t) >= 2020 & ttoyear(t) <= 2100 & file=="ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGbest") %>%
   mutate(Source=case_when( Flow=="abcost" ~ "Abatement costs",
                            Flow=="cdrcost" ~ "Cost of NETs",
-                           Flow=="ctx" ~ "Carbon tax",
+                           Flow=="ctx" ~ "Carbon tax payments",
                            Flow=="gentax" ~ "Other taxes",
-                           Flow=="transfer" ~ "Recycling",
+                           Flow=="transfer" ~ "Redistribution",
                            Flow=="cdrrev" ~ "NET revenues" )) %>%
   ggplot() +
   geom_area(aes(x=ttoyear(t),y=valuerel,fill=Source),color="black") + 
@@ -21,7 +21,7 @@ fig1a <- FLOWS %>% mutate(net = transfer + gentax + cdrcost + ctx + abcost + cdr
 ###1b: elasticities characterization
 fig1b <- ggplot(ineq_weights %>% filter(ttoyear(t) %in% c(2075) & ineq_elast %in% c("carbon_rev","abatement","tax") ) %>%
                   mutate(ineq_elast=case_when(ineq_elast=="carbon_rev" ~ "NET revenus and costs",
-                                              ineq_elast=="abatement" ~ "Carbon tax, abatement costs and recycling",
+                                              ineq_elast=="abatement" ~ "Carbon tax, abatement costs and redistribution",
                                               ineq_elast=="tax" ~ "Other taxes" )) %>% 
                   mutate(dist=as.factor(dist)) %>% mutate(dist=fct_relevel(dist,paste0("D",seq(1,10)))) ) +
   geom_line(data=quantiles_ref %>% mutate(dist=as.factor(dist)) %>% mutate(dist=fct_relevel(dist,paste0("D",seq(1,10)))) %>% filter(ttoyear(t) %in% c(2075)) %>% group_by(t,ssp,dist) %>% summarise(med=median(value)),aes(x=dist,y=med,group=t),size=1,linetype=2) +
@@ -43,7 +43,7 @@ fig2 <- ggplot(EMITOT %>% filter(n %in% c("World") & ttoyear(t) <= 2100 &
                                     O=="no"~"Without overshoot") )  %>% mutate(O=as.factor(O)) %>% 
                  mutate(O=fct_relevel(O,c("With overshoot","Without overshoot"))) )  +
   geom_area(aes(x=ttoyear(t), y=value,fill=Source),color="black") +
-  geom_bar(data=.%>%group_by(n,Source,O) %>% summarise(value=sum(value)),aes(x=2105, y=value/15,fill=Source),width=5,color="black",stat="identity") +
+#  geom_bar(data=.%>%group_by(n,Source,O) %>% summarise(value=sum(value)),aes(x=2105, y=value/15,fill=Source),width=5,color="black",stat="identity") +
   geom_line(data=.%>%group_by(O,file,n,t)%>%summarise(e=sum(value)),aes(x=ttoyear(t), y=e), size=1.2) +
   geom_line(data=CPRICE %>% filter(n %in% c("World") & ttoyear(t) <= 2100 & 
                                      file %in% c("ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGbest",
@@ -58,11 +58,23 @@ fig2 <- ggplot(EMITOT %>% filter(n %in% c("World") & ttoyear(t) <= 2100 &
               mutate(O=as.factor(O)) %>% mutate(O=fct_relevel(O,c("With overshoot","Without overshoot"))) %>% 
               filter(n=="World" & B=="700"  & ssp==2) %>% group_by(B,O) %>% filter(value==max(value) | ttoyear(t)==2030),
             aes(x=ttoyear(t),y=2*value/100+3,label=paste(as.character(round(value)),"$/tCO2")),color="red") +
+  geom_bar(data=EMITOT %>% filter(n %in% c("World") & ttoyear(t) <= 2100 &
+                                    file %in% c("ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGbest",
+                                                "ssp2_B700p_DISTgeo_COSTbest_TAXbest_NEGbest") ) %>%
+             mutate(Source=case_when(Source=="eind"~"Industrial emissions",Source=="eland"~ "Land use change",Source=="use"~ "Carbon removal"  ),
+                    O=case_when(O=="yes"~"With overshoot",
+                                O=="no"~"Without overshoot") )  %>% mutate(O=as.factor(O)) %>%
+             mutate(O=fct_relevel(O,c("With overshoot","Without overshoot"))) %>%
+             group_by_at(c("n", "pathdir","Source", file_group_columns)) %>%
+             complete(t=seq(min(t), max(t), 0.2)) %>% mutate(value=approxfun(t, value)(t)) %>%
+             group_by_at(c("n", "pathdir","Source", file_group_columns)) %>%
+             mutate(value=cumsum(value)) %>%
+             filter(ttoyear(t) %in% c(2070,2100) ),
+           aes(x=ttoyear(t),y=value/20,fill=Source),color="black",stat="identity",width=2) +
   facet_wrap(O~.,) +
   theme_pubr() +
   scale_fill_manual(values=c("#66FFFF","#FFCC99","#474826")) +
   ylab('Emissions and removal [GtCO2/yr]') + xlab('') + theme(legend.position = "bottom", legend.title = element_blank())
-
 ggsave("fig2.png",width=13,height=6,dpi=300)
 
 ## FIGURE 3

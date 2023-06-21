@@ -9,7 +9,7 @@ year0 = 2015
 tstep = 5
 
 restrict_files = c("") #to all scenarios matching partly one of its arguments
-exclude_files = c("")
+exclude_files = c("ext_fin_pos")
 removepattern = c("")
 
 file_separate <- c(type="separate", sep="_", names=c("ssp","B","DIST","COST","TAX","NEG"))
