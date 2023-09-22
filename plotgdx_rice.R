@@ -34,6 +34,7 @@ I, , , I, g, fg, 1
 
 library(cowplot)
 
+#sanitize name of the scenarios
 make_scen <- function(.x) {
   .x %>%
     filter(ttoyear(t)>=2015 & ttoyear(t)<=2100) %>%
@@ -62,11 +63,19 @@ make_scen <- function(.x) {
 
 file_group_columns <- c(file_group_columns,"O","CP","TECH","pathdir","Scenario")
 
+#sum global values
 make_global_sum <- function(.x,vars=c("value")) {
   .x %>% bind_rows(.x %>% 
           group_by_at(c("t",file_group_columns)) %>%
           summarise_at(vars,sum) %>%
           mutate(n="World")) }
 
+#analyze data for plots
 source("make_df.R")
 source("make_shapleys.R")
+
+#main figures
+source("Main_figures.R") #Figure 1-5 and extended Figure 1 (methods)
+
+#Supplementary information figures
+source("SI_cp.R") #ANNEX A

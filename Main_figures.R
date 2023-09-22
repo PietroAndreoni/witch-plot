@@ -11,10 +11,12 @@ fig1a <- FLOWS %>% mutate(net = transfer + gentax + cdrcost + ctx + abcost + cdr
                            Flow=="cdrrev" ~ "NET revenues" )) %>%
   ggplot() +
   geom_area(aes(x=ttoyear(t),y=valuerel,fill=Source),color="black") + 
-  geom_text(data=tibble(t=1,valuerel=1),x=2075,y=-0.032,color="blue",label="NET COSTS [%]") +
-  geom_line(aes(x=ttoyear(t),y=netrel),color="blue",size=1.2,linetype="dotted") +
+  geom_text(data=tibble(t=1,valuerel=1),x=2075,y=-0.032,color="black",label="NET COSTS [%]") +
+  geom_line(aes(x=ttoyear(t),y=netrel),color="black",size=1.2,linetype="dotted") +
   theme_pubr() +
-  scale_y_continuous(labels=scales::percent) +
+#  scale_y_continuous(labels=scales::percent) +
+  scale_fill_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7") ) +
+ # scale_fill_viridis_d() +
   ylab('Costs and gains, \n global aggregate [% GDP]') + xlab('') + 
   theme(legend.position = "bottom",text = element_text(size = 7)) + 
   guides(fill=guide_legend(nrow=3))
@@ -77,11 +79,12 @@ fig2 <- ggplot(EMITOT %>% filter(n %in% c("World") & ttoyear(t) <= 2100 &
   #          aes(x=ttoyear(t),y=value/20,fill=Source),color="black",stat="identity",width=2) +
   facet_wrap(O~.,) +
   theme_pubr() +
-  scale_fill_manual(values=c("#66FFFF","#FFCC99","#474826")) +
+  scale_fill_manual(values=c("#457b9d","#bc6c25","#606c38")) +
   ylab('Emissions and removal [GtCO2/yr]') + xlab('') + 
   theme(legend.position = "bottom", legend.title = element_blank(),text = element_text(size = 7))
 ggsave("fig2.pdf",width=18,height=9,dpi=300,units="cm")
 
+c("eind"="#bc6c25","BECCS"="#606c38","DACCS"="#457b9d")
 ## FIGURE 3
 require(ggpattern)
 main1 <- inner_join(share,
