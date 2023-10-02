@@ -88,8 +88,9 @@ ggplot(plot_gini) +
   scale_alpha_manual(values=c(0.5,0.6,0.7,0.8,1,1),breaks = c("0 %","25 %","50 %","75 %","100 %","neutral")) +
   scale_color_manual(values= scales::hue_pal()(4) ) +
   ggpubr::theme_pubr() + geom_hline(yintercept=0,color="grey") + ylab("Inequality variation [Gini points]") + xlab("") +
-  guides(color = "none",alpha = guide_legend(title=NULL))
-ggsave("SIPM_fig1.png",width=11.7,height=10,dpi=320)
+  guides(color = "none",alpha = guide_legend(title=NULL)) + 
+  theme(text = element_text(size = 7))
+ggsave("SIPM_fig1.png",width=18,height=14,dpi=300,units="cm")
 
 plot_prof <- prof %>% 
   inner_join(share) %>% mutate(cap = factor(cap,levels=c("0 %","25 %","50 %","75 %","100 %","neutral"),ordered=TRUE))
@@ -111,5 +112,6 @@ ggplot(plot_prof ) +
   theme_pubr() + ylab("Discounted profit margin 2020-2100 [%]") + xlab("") +
   scale_alpha_manual(values=c(0.5,0.6,0.7,0.8,1,1),breaks = c("0 %","25 %","50 %","75 %","100 %","neutral")) +
   scale_fill_manual(values= scales::hue_pal()(4) ) +
-  guides(fill = guide_legend(title=NULL))
-ggsave("SIPM_fig2.png",width=9,height=8,dpi=320)
+  guides(fill = guide_legend(title=NULL)) + 
+  theme(legend.position = "none",text = element_text(size = 7))
+ggsave("SIPM_fig2.png",width=8.8,height=8,dpi=300,units="cm")

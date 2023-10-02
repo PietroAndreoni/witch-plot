@@ -65,7 +65,7 @@ insert <- ggplot(inner_join(reg %>% filter(iso3!="ATA"),maps_intr %>% filter(tto
   geom_polygon(aes(group = group, fill = breaks),color='black',size=.1) +
   theme_void()+
   facet_grid(.~DIST,) +
-  theme(legend.position="none",strip.text.x = element_text(size=12, face="bold"),plot.title = element_text(hjust = 0.5)) +
+  theme(legend.position="none",strip.text.x = element_text(size=7),plot.title = element_text(hjust = 0.5)) +
   labs(fill="") 
 
 main <- ggplot(plot_gini) +
@@ -74,7 +74,8 @@ main <- ggplot(plot_gini) +
   scale_alpha_manual(values=c(0.3,0.5,0.7,1),labels=c("5 %","10 %","15 %","20 %")) +
   facet_grid(DIST~breaks,) +
   ggpubr::theme_pubr() + geom_hline(yintercept=0,color="grey") + ylab("Inequality variation [Gini points]") + xlab("") +
-  guides(color = "none") + labs(alpha=NULL)
+  guides(color = "none") + labs(alpha=NULL)+
+  theme(text = element_text(size = 7))
 
 fig2a <- cowplot::ggdraw() +
   cowplot::draw_plot(main ) +
@@ -91,7 +92,7 @@ plot_y <- gdp_loss %>% ungroup() %>% filter(ttoyear(t) %in% c(2050,2075,2100)) %
   mutate(breaks=arules::discretize((eff-resp)*100,breaks=3,method="frequency",labels=c("donor","neutral","receiver"))) %>%
   group_by(breaks,t,file,share,DIST) %>%
   summarise(med=median( gdploss ),min=quantile(gdploss,0.33),max=quantile(gdploss,0.66)) %>%
-  mutate(DIST=as.factor(DIST))
+  mutate(DIST=as.factor(DIST)) 
 levels(plot_y$DIST) <- list("Global north"="geo","Global south"="epc")
 
 fig2b <- ggplot(plot_y %>% mutate(share=ordered(paste0(as.character(share*100)," %"),levels=c("5 %","10 %","15 %","20 %")))) +
@@ -103,10 +104,11 @@ fig2b <- ggplot(plot_y %>% mutate(share=ordered(paste0(as.character(share*100),"
   scale_color_manual(values=c("#2ECBE9","#1E80C1","blue")) +
   scale_fill_manual(values=c("#2ECBE9","#1E80C1","blue")) +
   facet_grid(DIST~share ,scales="free_x") + theme_pubr() + geom_hline(yintercept=0,color="grey") + ylab("GDP variation [% points]") + xlab("") +
-  guides(color = guide_legend(title=NULL),fill = guide_legend(title=NULL))
+  guides(color = guide_legend(title=NULL),fill = guide_legend(title=NULL)) +
+  theme(text = element_text(size = 7))
 
 fig2 <- ggarrange(fig2a,fig2b,nrow=2,labels=c("a","b"))
-ggsave("SIIT_fig1.png",width=11.7,height=10,dpi=320)
+ggsave("SIIT_fig1.png",width=18,height=16,dpi=300,units="cm")
 
 plot_y2 <- new_y_inttr %>% filter(ttoyear(t) %in% c(2075) & share==0.1) %>%
   rowwise() %>% mutate(loss=ynew-gdp) %>% group_by(t,n,file,share,DIST) %>% summarise(loss=sum(loss)) %>%
@@ -123,8 +125,8 @@ ggplot(inner_join(reg %>% filter(iso3!="ATA"),plot_y2,relationship = "many-to-ma
   scale_fill_manual(values=RColorBrewer::brewer.pal(n = 8, name = "RdBu")) +
   theme(legend.position="top",strip.text.x = element_text(size=12, face="bold"),plot.title = element_text(hjust = 0.5)) +
   facet_grid(DIST~.) +
-  labs(fill="Gain and losses [US$/(pc*yr)]") 
-ggsave("SIIT_fig2.png",width=10,height=12,dpi=320)
+  labs(fill="Gain and losses [US$/(pc*yr)]")
+ggsave("SIIT_fig2.png",width=18,height=20,dpi=300,units="cm")
 
 #global variation in the theil index
 theil <- new_y_inttr %>% inner_join(pop) %>%
@@ -138,5 +140,6 @@ ggplot(theil %>% pivot_longer(c(Within,Between),names_to="Inequality contributio
   geom_line(data=.%>%group_by(t,DIST,share) %>% summarise(value=sum(value)),aes(x=ttoyear(t),y=value*100),color="blue",linewidth=1.2,linetype="dotted") +
   facet_grid(DIST~share) + theme_pubr()  + ylab("Inequality variation [MLD index points]") + xlab("") +
   geom_hline(yintercept=0) +
-  guides(color = guide_legend(title=NULL))
-ggsave("SIIT_fig3.png",width=10,height=8,dpi=320)
+  guides(color = guide_legend(title=NULL)) +
+  theme(text = element_text(size = 7))
+ggsave("SIIT_fig3.png",width=18,height=14,dpi=300,units="cm")

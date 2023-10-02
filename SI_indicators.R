@@ -47,8 +47,9 @@ compare %>%
   geom_ribbon(aes(x=ttoyear(t),ymin=min,ymax=max,fill=breaksname),size=1,alpha=0.2) +
   facet_wrap(name~.,scales="free") +
   labs(color="Carbon removed \n[% abated + removed]",fill="Carbon removed \n[% abated + removed]") +
-  theme_pubr() + xlab("") + ylab("Change in inequality index")
-ggsave("SIIND_fig1.png",width=12,height=10,dpi=320)
+  theme_pubr() + xlab("") + ylab("Change in inequality index") +
+  theme(text = element_text(size = 7))  
+ggsave("SIIND_fig1.png",width=18,height=12,dpi=300,units="cm")
 
 ###### 
 theilw <- Y_DIST %>%
@@ -129,8 +130,9 @@ compare %>%
   geom_bar(aes(x=file,y=(value-value2)*100,fill=name),color="black",position="dodge",stat="identity") +
   labs(color="",fill="") +
   facet_grid(ttoyear(t)~.,) +
-  theme_pubr() + xlab("") + ylab("Change in inequality index")
-ggsave("SIIND_fig12.png",width=12,height=8,dpi=320)
+  theme_pubr() + xlab("") + ylab("Change in inequality index") +
+  theme(text = element_text(size = 7)) 
+ggsave("SIIND_fig12.png",width=18,height=14,dpi=300,units="cm")
 
 
 

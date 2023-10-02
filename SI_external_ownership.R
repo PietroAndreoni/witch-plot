@@ -47,8 +47,9 @@ plot_gini <- gini_new %>% inner_join(maps_extown) %>%
 insert <- ggplot(inner_join(reg %>% filter(iso3!="ATA"),maps_extown),aes(x=long,y=lat),relationship = "many-to-many") +
   geom_polygon(aes(group = group, fill = breaks),color='black',size=.1) +
   theme_void()+
-  theme(legend.position="top",strip.text.x = element_text(size=12, face="bold"),plot.title = element_text(hjust = 0.5)) +
-  labs(fill="International assets per capita") 
+  theme(legend.position="top",strip.text.x = element_text(size=7),plot.title = element_text(hjust = 0.5)) +
+  labs(fill="International assets per capita")  +
+  theme(text = element_text(size = 7))
 
 main <- ggplot(plot_gini) +
   geom_point(data=.%>%filter(ttoyear(t)%%10==0),aes(x=ttoyear(t),y=med*100,color=breaks,alpha=as.character(frac) ),size=3) +
@@ -56,7 +57,8 @@ main <- ggplot(plot_gini) +
   scale_alpha_manual(values=c(0.3,0.5,0.7,1),labels=c("5 %","10 %","15 %","20 %")) +
   facet_grid(DIST~breaks,) +
   ggpubr::theme_pubr() + geom_hline(yintercept=0,color="grey") + ylab("Inequality variation [Gini points]") + xlab("") +
-  guides(color = "none",alpha = guide_legend(title=NULL))
+  guides(color = "none",alpha = guide_legend(title=NULL)) +
+  theme(text = element_text(size = 7))
 
 fig2a <- cowplot::ggdraw() +
   cowplot::draw_plot(main) +
@@ -84,10 +86,11 @@ fig2b <- ggplot(plot_y%>% mutate(frac=ordered(paste0(as.character(frac*100)," %"
   scale_color_manual(values=c("#2ECBE9","#1E80C1","blue")) +
   scale_fill_manual(values=c("#2ECBE9","#1E80C1","blue")) +
   facet_grid(DIST~frac,scales="free_x") + theme_pubr() + geom_hline(yintercept=0,color="grey") + ylab("GDP variation [% points]") + xlab("% of global foreign assets held by country") +
-  guides(color = guide_legend(title=NULL),fill = guide_legend(title=NULL))
+  guides(color = guide_legend(title=NULL),fill = guide_legend(title=NULL))  +
+  theme(text = element_text(size = 7))
 
 fig2 <- ggarrange(fig2a,fig2b,nrow=2,labels=c("a","b"))
-ggsave("SIEO_fig1.png",width=11.7,height=10,dpi=320)
+ggsave("SIEO_fig1.png",width=18,height=18,dpi=300,units="cm")
 
 
 plot_y2 <- new_y_extown %>% filter(ttoyear(t) %in% c(2075) & frac==0.1) %>% 
@@ -110,7 +113,7 @@ ggplot(inner_join(reg %>% filter(iso3!="ATA"),plot_y2),aes(x=long,y=lat),relatio
   theme(legend.position="top",strip.text.x = element_text(size=12, face="bold"),plot.title = element_text(hjust = 0.5)) +
   facet_grid(DIST~.) +
   labs(fill="Gain and losses [US$/(pc*yr)]") 
-ggsave("SIEO_fig2.png",width=10,height=12,dpi=320)
+ggsave("SIEO_fig2.png",width=18,height=20,dpi=300,units="cm")
 
 #global variation in the theil index
 theil <- new_y_extown %>% inner_join(pop) %>%
@@ -124,7 +127,6 @@ ggplot(theil %>% pivot_longer(c(Within,Between),names_to="Inequality contributio
   geom_line(data=.%>%group_by(t,DIST,frac) %>% summarise(value=sum(value)),aes(x=ttoyear(t),y=value*100),color="blue",linewidth=1.2,linetype="dotted") +
   facet_grid(DIST~frac) + theme_pubr()  + ylab("Inequality variation [MLD index points]") + xlab("") +
   geom_hline(yintercept=0) +
-  guides(color = guide_legend(title=NULL))
-ggsave("SIEO_fig3.png",width=10,height=8,dpi=320)
-
-library(countrycode)
+  guides(color = guide_legend(title=NULL)) +
+  theme(text = element_text(size = 7))
+ggsave("SIEO_fig3.png",width=18,height=14,dpi=300,units="cm")

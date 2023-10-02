@@ -72,10 +72,18 @@ make_global_sum <- function(.x,vars=c("value")) {
 
 #analyze data for plots
 source("make_df.R")
+print("Please wait, these will take a few minutes...")
 source("make_shapleys.R")
+print("Done! Now plotting main figures")
 
 #main figures
+update_geom_defaults("text", list(size = 7/3.88))
+
 source("Main_figures.R") #Figure 1-5 and extended Figure 1 (methods)
+source("Methods_elasticities.R") #extended Figure 1 (methods)
 
 #Supplementary information figures
-source("SI_cp.R") #ANNEX A
+SI_files <- list.files(pattern=".R")[str_detect(list.files(pattern=".R"),"SI_")]
+for (i in SI_files) {
+print(paste0("We are plotting figures for ",i))
+source(i) }

@@ -15,11 +15,6 @@ flat <- tibble(q=seq(0,1.2,by=0.05),ca=2000,cr=200) %>%
 
 f1 <- ggplot(flat, aes(x=q)) +
   geom_line(aes(y=ca),color="black",size=2) +
-  geom_text(x=1,aes(y=ca[q==1]+20),label="MACC, no CDR" ) +
-  geom_line(aes(y=cinf),color="red",size=2) +
-  geom_text(x=1,aes(y=cinf[q==1]+20),label="MACC, infinite CDR",color="red" ) +
-  geom_line(aes(y=clim),color="blue",size=2) +  
-  geom_text(x=1.2,aes(y=clim[q==1.2]+20),label="MACC, constrained CDR",color="blue" ) +
   geom_vline(xintercept=1,color="grey",linetype=2,size=1) +
   geom_vline(xintercept=1.2,color="grey",linetype=2,size=1) +
   geom_hline(aes(yintercept=clim[q==1]),color="grey",linetype=2,size=1) +
@@ -28,9 +23,16 @@ f1 <- ggplot(flat, aes(x=q)) +
   geom_text(x=0.2,aes(y=clim[q==1.2]+20),label="cprice at max overshoot, \n limited CDR" ) +
   geom_text(x=0.95,y=50,label="net-zero",angle=90 ) +
   geom_text(x=1.15,y=60,label="max net-neg",angle=90 ) +
+  geom_text(x=1,aes(y=ca[q==1]+20),label="MACC, no CDR" ) +
+  geom_line(aes(y=cinf),color="red",size=2) +
+  geom_text(x=1,aes(y=cinf[q==1]+20),label="MACC, infinite CDR",color="red" ) +
+  geom_line(aes(y=clim),color="blue",size=2) +  
+  geom_text(x=1.2,aes(y=clim[q==1.2]-10),label="MACC, \nconstrained CDR",color="blue" ) +
   geom_rect(data=.%>%filter(q==1.2),aes(ymax=clim),xmin=0.45,xmax=0.65,ymin=200,fill="red",alpha=0.2,color="red",linetype=2) +
   geom_rect(data=.%>%filter(q==1),aes(ymax=clim),xmin=0.45,xmax=0.65,ymin=200,fill="blue",alpha=0.2,color="blue") +
-  ylab('MACC [$/tonCO2]') + xlab('Abatement fraction [fraction of baseline emissions]') + theme_pubr()
+  ylab('MACC [$/tonCO2]') + xlab('Abatement fraction [fraction of baseline emissions]') + 
+  theme_pubr() +
+  theme(text = element_text(size = 7))
 
 
 
@@ -64,7 +66,9 @@ f2 <- ggplot() +
   geom_segment(aes(y=70,yend=90,x=0.4,xend=0.4),size=1) +
   geom_segment(aes(y=70,yend=90,x=0.6,xend=0.6),size=1) +
   geom_text(aes(y=50,x=0.5),label="... and more available") +
-  ylab('MACC [$/tonCO2]') + xlab('Abatement fraction [fraction of baseline emissions]') + theme_pubr()
+  ylab('MACC [$/tonCO2]') + xlab('Abatement fraction [fraction of baseline emissions]') + 
+  theme_pubr() +
+  theme(text = element_text(size = 7))
 
 ggarrange(f1,f2,labels=c("a","b"))
-ggsave("SI_macc.png",width=13,height=6)
+ggsave("SI_macc.png",width=18,height=10,units="cm",dpi=300)

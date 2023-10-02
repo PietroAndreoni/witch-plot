@@ -50,8 +50,10 @@ ggplot(map_toy %>% ungroup() %>% filter(sd_dist==1 & rev_gdp==0.05) %>%
   facet_wrap(.~paste0(Taxation,": ",etatax)) + theme_pubr() + scale_y_continuous(labels = scales::percent) +
   ylab('Profit margin for CDR') +
   xlab(paste0('Intrinstic regressivity of financing CDR [etacdr-etatax]')) +
-  labs(fill = 'Gini - gini0',linetype="Equity concentration (relative to income distribution)") + theme(legend.box="vertical")
-ggsave("SIM_fig1.png",width=11.7,height=8,dpi=320)
+  labs(fill = 'Gini - gini0',linetype="Equity concentration (relative to income distribution)") + 
+  theme(legend.box="vertical",
+        text = element_text(size = 7))
+ggsave("SIM_fig1.png",width=18,height=15,dpi=300,units="cm")
 
 
 # sd_dist -> standard deviation to generate an income distribution (lognormal)
@@ -111,15 +113,16 @@ main <- ggplot(validate_model %>% filter(ginirel*100>=-0.1 & ginirel*100 <=1)) +
   geom_smooth(aes(x=ginirel*100,y=pred*100),method="lm") +
   geom_abline(slope=1,intercept=0) +
   theme_pubr() + xlab("Scenario results") + ylab("Simplified model results") +
-  guides(color=guide_legend(nrow=2,title = NULL))
+  guides(color=guide_legend(nrow=2,title = NULL)) + 
+  theme(text = element_text(size = 7))
 
 small <- ggplot(validate_model) +
   geom_point(aes(x=ginirel*100,y=pred*100,color=file)) +
   geom_smooth(aes(x=ginirel*100,y=pred*100),method="lm") +
   geom_abline(slope=1,intercept=0) + 
-  theme_pubr() + xlab("") + ylab("") + theme(legend.position = "none")
+  theme_pubr() + xlab("") + ylab("") + theme(legend.position = "none",text = element_text(size = 7))
 
 SI_fig1 <- ggdraw() +
   draw_plot(main) +
   draw_plot(small, x = 0.15, y = .5, width = .3, height = .3)
-ggsave("SIM_fig2.png",width=7,height=5.5,dpi=320)
+ggsave("SIM_fig2.png",width=8.8,height=8,dpi=300,units="cm")

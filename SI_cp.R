@@ -27,13 +27,15 @@ insert <- ggplot(inner_join(reg %>% filter(iso3!="ATA"),cprice_brackets,relation
   geom_polygon(aes(group = group, alpha = bracket),color='black',fill="#7CAE00",linewidth=.1) +
   theme_void()+
   scale_alpha_manual(values=c(0.1,0.5,1)) +
-  theme(legend.position="none",strip.text.x = element_text(size=12, face="bold"),plot.title = element_text(hjust = 0.5)) +
+  theme(legend.position="none",strip.text.x = element_text(size=12, face="bold"),
+        plot.title = element_text(hjust = 0.5),
+        text = element_text(size = 7)) +
   labs(fill="") 
 
 main <- ggplot(plot_prices) +
   geom_line(aes(x=ttoyear(t),y=med,color=CP,alpha=bracket),linewidth=2) +
   scale_alpha_manual(values=c(1,0.4,0.7,1)) +
-  theme_pubr() + xlab('') + ylab('Carbon price [US$/tonCO2]')
+  theme_pubr() + xlab('') + ylab('Carbon price [US$/tonCO2]') + theme(text = element_text(size = 7))
 leg <- get_legend(main)
 
 require(cowplot)
@@ -63,11 +65,14 @@ cumcarbon <- ggplot(plot_eneg) +
   geom_bar(aes(x=CP,y=enegcum,fill=CP),stat="identity",position="dodge",color="black") + 
   geom_text(aes(x=CP,y=enegcum*1.15,color=CP,label=round(med) ),stat="identity",position="dodge") + 
   facet_grid(ttoyear(t)~.,scales="free") +
-  theme_pubr() + xlab('') + ylab('Cumulative carbon removed [GtCO2]') + theme(legend.position="none")
+  theme_pubr() + xlab('') + ylab('Cumulative carbon removed [GtCO2]') + 
+  theme(legend.position="none",text = element_text(size = 7),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
 
 
 ggarrange(cpricesplot , cumcarbon, widths = c(0.65,0.35), labels=c("a","b"), legend.grob = leg)
-ggsave("SICP_fig1.png",width=12,height=6,dpi=320)
+ggsave("SICP_fig1.png",width=18,height=9,dpi=300,units="cm")
 
 gini_onlyref <- YGROSS_DIST %>%
   filter(CP!="Central" | file=="ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGbest") %>%
@@ -105,8 +110,8 @@ ggplot(gini_techsens) +
   geom_line(aes(x=ttoyear(t),y=med,color=CP),linewidth=2) +
   geom_line(data=gini_onlyref,aes(x=ttoyear(t),y=med,color=CP),linewidth=1,linetype=2) +
   geom_ribbon(aes(x=ttoyear(t),ymin=min,ymax=max,fill=CP),alpha=0.1) +
-  facet_wrap(breaksname~.,) + theme_pubr() + xlab('') + ylab('')
-ggsave("SICP_fig2.png",width=11.7,height=10,dpi=320)
+  facet_wrap(breaksname~.,) + theme_pubr() + xlab('') + ylab('') + theme(text = element_text(size = 7))
+ggsave("SICP_fig2.png",width=18,height=16,dpi=300,units="cm")
 
 #### figure 3
 shapleyreftheil_cp <- ALL_FLOWS %>%
@@ -145,5 +150,5 @@ ggplot(plot_theil) +
              aes(x=CP,y=value*100),shape=1,size=2) +
   facet_grid(ttoyear(t)~.,) + xlab('') + ylab('') +
   guides(fill=guide_legend(title="Inequality driver"),alpha=guide_legend(title="Inequality contribution")) +
-  scale_fill_manual(values=c("#00BA38","#619CFF")) + theme_pubr()
-ggsave("SICP_fig3.png",width=11.7,height=10,dpi=320)
+  scale_fill_manual(values=c("#00BA38","#619CFF")) + theme_pubr() + theme(text = element_text(size = 7))
+ggsave("SICP_fig3.png",width=18,height=16,dpi=300,units="cm")

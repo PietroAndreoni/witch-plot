@@ -15,7 +15,12 @@ fig1a <- FLOWS %>% mutate(net = transfer + gentax + cdrcost + ctx + abcost + cdr
   geom_line(aes(x=ttoyear(t),y=netrel),color="black",size=1.2,linetype="dotted") +
   theme_pubr() +
 #  scale_y_continuous(labels=scales::percent) +
-  scale_fill_manual(values= c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7") ) +
+  scale_fill_manual(values= c("Emission reduction costs"="#E69F00", 
+                              "NET revenues"="#56B4E9", 
+                              "Income taxes"="#0072B2", 
+                              "Cost of NETs"="#009E73", 
+                              "Carbon tax payments"="#D55E00", 
+                              "Redistribution"="#CC79A7") ) +
  # scale_fill_viridis_d() +
   ylab('Costs and gains, \n global aggregate [% GDP]') + xlab('') + 
   theme(legend.position = "bottom",text = element_text(size = 7)) + 
@@ -34,11 +39,12 @@ fig1b <- ggplot(ineq_weights %>% filter(ttoyear(t) %in% c(2075) & ineq_elast %in
   theme_pubr() + xlab('Decile') + 
   ylab('% of flow falling on decile D, \n country median') +
   scale_y_continuous(labels=scales::percent) +
-  scale_color_manual(values=c("#F8766D","#00BA38","#619CFF")) +  
+  scale_color_manual(values=c("#D55E00","#0072B2","#56B4E9")) +  
   theme(legend.position = "bottom",text = element_text(size = 7),legend.title = element_blank()) + 
   guides(color=guide_legend(nrow=3))
 
 fig1 <- ggarrange(fig1a,fig1b)
+ggsave("fig1.png",width=18,height=10,dpi=300,units="cm")
 ggsave("fig1.pdf",width=18,height=10,dpi=300,units="cm")
 
 ## FIGURE 2
@@ -56,35 +62,21 @@ fig2 <- ggplot(EMITOT %>% filter(n %in% c("World") & ttoyear(t) <= 2100 &
                                                  "ssp2_B700p_DISTgeo_COSTbest_TAXbest_NEGbest") ) %>% 
               mutate(O=case_when(O=="yes"~"With overshoot", O=="no"~"Without overshoot")) %>% 
               mutate(O=as.factor(O)) %>% mutate(O=fct_relevel(O,c("With overshoot","Without overshoot"))), 
-            aes(x=ttoyear(t),y=2*value/100),color="red",size=1.2,linetype="dotted") +
+            aes(x=ttoyear(t),y=2*value/100),color="black",size=1.2,linetype="dotted") +
   geom_text(data=CPRICE  %>% filter(n %in% c("World") & ttoyear(t) <= 2100 & 
                                       file %in% c("ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGbest",
                                                   "ssp2_B700p_DISTgeo_COSTbest_TAXbest_NEGbest") ) %>% 
               mutate(O=case_when(O=="yes"~"With overshoot", O=="no"~"Without overshoot"))  %>% 
               mutate(O=as.factor(O)) %>% mutate(O=fct_relevel(O,c("With overshoot","Without overshoot"))) %>% 
               filter(n=="World" & B=="700"  & ssp==2) %>% group_by(B,O) %>% filter(value==max(value) | ttoyear(t)==2030),
-            aes(x=ttoyear(t),y=2*value/100+3,label=paste(as.character(round(value)),"$/tCO2")),color="red") +
-  # geom_bar(data=EMITOT %>% filter(n %in% c("World") & ttoyear(t) <= 2100 &
-  #                                   file %in% c("ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGbest",
-  #                                               "ssp2_B700p_DISTgeo_COSTbest_TAXbest_NEGbest") ) %>%
-  #            mutate(Source=case_when(Source=="eind"~"Industrial emissions",Source=="eland"~ "Land use change",Source=="use"~ "Carbon removal"  ),
-  #                   O=case_when(O=="yes"~"With overshoot",
-  #                               O=="no"~"Without overshoot") )  %>% mutate(O=as.factor(O)) %>%
-  #            mutate(O=fct_relevel(O,c("With overshoot","Without overshoot"))) %>%
-  #            group_by_at(c("n", "pathdir","Source", file_group_columns)) %>%
-  #            complete(t=seq(min(t), max(t), 0.2)) %>% mutate(value=approxfun(t, value)(t)) %>%
-  #            group_by_at(c("n", "pathdir","Source", file_group_columns)) %>%
-  #            mutate(value=cumsum(value)) %>%
-  #            filter(ttoyear(t) %in% c(2070,2100) ),
-  #          aes(x=ttoyear(t),y=value/20,fill=Source),color="black",stat="identity",width=2) +
+            aes(x=ttoyear(t),y=2*value/100+3,label=paste(as.character(round(value)),"$/tCO2")),color="black") +
   facet_wrap(O~.,) +
   theme_pubr() +
-  scale_fill_manual(values=c("#457b9d","#bc6c25","#606c38")) +
+  scale_fill_manual(values=c("#56B4E9", "#E69F00", "#009E73")) +
   ylab('Emissions and removal [GtCO2/yr]') + xlab('') + 
   theme(legend.position = "bottom", legend.title = element_blank(),text = element_text(size = 7))
 ggsave("fig2.pdf",width=18,height=9,dpi=300,units="cm")
 
-c("eind"="#bc6c25","BECCS"="#606c38","DACCS"="#457b9d")
 ## FIGURE 3
 require(ggpattern)
 main1 <- inner_join(share,
@@ -162,8 +154,9 @@ main <- share %>%
   scale_fill_discrete(labels=c('Low', 'Medium', 'High', "Very high")) +
   labs(color="Carbon removed \n[% abated + removed]",fill="Carbon removed \n[% abated + removed]") +
   theme_pubr() +
-  theme(legend.position = "bottom",text = element_text(size = 7)) + 
-  xlab(" \n ") + ylab("Change in gini index [points]")
+  theme(legend.position = "bottom",text = element_text(size = 7))  + 
+  guides(fill=guide_legend(nrow=2),color=guide_legend(nrow=2)) +
+  xlab("") + ylab("Change in gini index [points]")
 
 insert <- inner_join(PROF_CDR,E_NEG) %>%
   inner_join(YGROSS) %>%
@@ -183,7 +176,7 @@ insert <- inner_join(PROF_CDR,E_NEG) %>%
         legend.background = element_rect(fill='transparent'), #transparent legend bg
         legend.box.background = element_rect(fill='transparent') #transparent legend panel
   ) + 
-  geom_hline(yintercept=0,color="grey") +  geom_vline(xintercept=2047,color="grey",linetype=2)  + ylim(c(-100,100)) +
+  geom_hline(yintercept=0,color="grey") +  geom_vline(xintercept=2047,color="grey",linetype=2)  + ylim(c(-100,100)) + 
   scale_x_continuous(breaks=c(2040,2070,2100))
 
 fig3b <- ggdraw() +
@@ -206,7 +199,6 @@ fig4 <- share %>% filter(file=="ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGbest") %>%
   geom_ribbon(aes(x=ttoyear(t),ymin=min*100,ymax=max*100,fill=breaks),size=1,alpha=0.2) +
   geom_bar(data=.%>%filter(ttoyear(t) %in% c(2050,2075,2100)),aes(x=ttoyear(t),y=medcdr*100,fill=breaks),color="black",stat="identity",position="dodge",width=10,alpha=0.2) +
   geom_bar(data=.%>%filter(ttoyear(t) %in% c(2050,2075,2100)),aes(x=ttoyear(t),y=med*100,color=breaks),fill=NA,stat="identity",position="dodge",width=10) +
-  #  geom_bar_pattern(data=.%>%filter(ttoyear(t) %in% c(2050,2075,2100)),aes(x=ttoyear(t),y=medrd*100,color=breaks),fill=NA,stat="identity",position="dodge",width=5) +
   geom_hline(yintercept=0,color="grey") +
   scale_color_discrete(labels=c('Low', 'Medium', 'High', "Very high")) +
   scale_fill_discrete(labels=c('Low', 'Medium', 'High', "Very high")) +
@@ -225,23 +217,18 @@ a <- shapleyreftheil %>% inner_join(scenarios) %>%
                      "ssp2_B700_DISTgeo_COSThigh_TAXbest_NEGbest") & 
            ttoyear(t) %in% c(2075,2100)) %>% mutate(DIST=as.factor(DIST),group=as.factor(group),COST=as.factor(COST))
 levels(a$DIST) <- list("Global north"="geo","Global south"="epc")
-levels(a$group) <- list("Abatement costs"="1","CDR costs"="2","CDR transfers"="3")
+levels(a$group) <- list("Abatement costs"="1","NETs costs"="2","NETs financing"="3")
 levels(a$COST) <- list("Low costs"="best","High costs"="high")
 
 fig5 <- ggplot(a) +
-#  geom_bar(data=. %>% filter(value>0) %>% group_by(t,file,DIST,COST) %>% summarise(value=sum(value)),aes(x=DIST,y=value*100),fill=NA,stat="identity",color="grey",linetype=2) +
-  geom_bar(data=.%>% filter(group %in% c("CDR costs","CDR transfers")),aes(x=DIST,y=value*100,fill=group,color=group,alpha=dec),stat="identity",color="black") +
-  geom_point(data=.%>% filter(group %in% c("CDR costs","CDR transfers")) %>% group_by(t,file,DIST,COST) %>% summarise(value=sum(value)),
+  geom_bar(data=.%>% filter(group %in% c("NETs costs","NETs financing")),aes(x=DIST,y=value*100,fill=group,color=group,alpha=dec),stat="identity",color="black") +
+  geom_point(data=.%>% filter(group %in% c("NETs costs","NETs financing")) %>% group_by(t,file,DIST,COST) %>% summarise(value=sum(value)),
              aes(x=DIST,y=value*100),shape=21,size=3,fill="white") +
-  geom_text(data=.%>% filter(group %in% c("CDR costs","CDR transfers") & ttoyear(t)==2075 & COST=="Low costs" & DIST=="Global north") %>% group_by(t,file,DIST,COST) %>% summarise(value=sum(value)),
-             aes(x=DIST,y=value*100-0.04),label="NET CDR EFFECT") +
-  geom_segment(data=. %>% group_by(t,file,DIST,COST) %>% summarise(value=sum(value)),
-             aes(x=as.numeric(DIST)-0.4,y=value*100,yend=value*100,xend=as.numeric(DIST)+0.4),linetype=2,size=1.2) +
-  geom_text(data=. %>% group_by(t,file,DIST,COST) %>% summarise(value=sum(value)) %>% filter(ttoyear(t)==2075 & COST=="Low costs" & DIST=="Global north") %>% group_by(t,file,DIST,COST) %>% summarise(value=sum(value)),
-            aes(x=DIST,y=value*100),label="NET INEQUALITY VARIATION \n(INCLUDING ABATEMENT)",vjust=0.5) +
+  geom_text(data=.%>% filter(group %in% c("NETs costs","NETs financing") & ttoyear(t)==2075 & COST=="Low costs" & DIST=="Global north") %>% group_by(t,file,DIST,COST) %>% summarise(value=sum(value)),
+             aes(x=DIST,y=value*100-0.04),label="TOTAL NETS EFFECT") +
   facet_grid(COST~ttoyear(t) ,) + xlab('') + ylab('') +
   guides(fill=guide_legend(title="Inequality driver"),alpha=guide_legend(title="Inequality contribution")) +
-  scale_fill_manual(values=c("#00BA38","#619CFF"))  + 
+  scale_fill_manual(values=c("#009E73","#56B4E9"))  + 
   theme_pubr() +
   theme(legend.position = "bottom",text = element_text(size = 7))
 ggsave("fig5.pdf",width=18,height=16,dpi=300,units="cm")

@@ -28,11 +28,14 @@ cumcarbon <- ggplot(plot_eneg) +
   geom_bar(aes(x=TECH,y=enegcum,fill=TECH),stat="identity",position="dodge",color="black") + 
   geom_text(aes(x=TECH,y=enegcum*1.05,color=TECH,label=round(med)),stat="identity",position="dodge") + 
   facet_grid(ttoyear(t)~.,scales="free") +
-  theme_pubr() + xlab('') + ylab('') + theme(legend.position="none")
+  theme_pubr() + xlab('') + ylab('') + 
+  theme(legend.position="none",
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
   
 
 ggarrange(cpricesplot + theme(legend.position="none"), cumcarbon, widths = c(0.65,0.35), labels=c("a","b"), legend.grob = get_legend(cpricesplot))
-ggsave("SIT_fig1.png",width=12,height=6,dpi=320)
+ggsave("SIT_fig1.png",width=18,height=9,dpi=300,units="cm")
 
 gini_onlyref <- YGROSS_DIST %>%
   filter(TECH!="Central" | file=="ssp2_B700_DISTgeo_COSTbest_TAXbest_NEGbest") %>%
@@ -70,8 +73,9 @@ ggplot(gini_techsens) +
   geom_line(aes(x=ttoyear(t),y=med,color=TECH),linewidth=2) +
   geom_line(data=gini_onlyref,aes(x=ttoyear(t),y=med,color=TECH),linewidth=1,linetype=2) +
   geom_ribbon(aes(x=ttoyear(t),ymin=min,ymax=max,fill=TECH),alpha=0.1) +
-  facet_wrap(breaksname~.,) + theme_pubr() + xlab('') + ylab('')
-ggsave("SIT_fig2.png",width=11.7,height=10,dpi=320)
+  facet_wrap(breaksname~.,) + theme_pubr() + xlab('') + ylab('') +
+  guides(fill=guide_legend(nrow=3),color=guide_legend(nrow=3)) 
+ggsave("SIT_fig2.png",width=18,height=18,dpi=300,units="cm")
 
 
 #### figure 3
@@ -111,6 +115,6 @@ ggplot(plot_theil) +
              aes(x=TECH,y=value*100),shape=1,size=2) +
   facet_grid(ttoyear(t)~.,) + xlab('') + ylab('') +
   guides(fill=guide_legend(title="Inequality driver"),alpha=guide_legend(title="Inequality contribution")) +
-  scale_fill_manual(values=c("#00BA38","#619CFF")) + theme_pubr()
-ggsave("SIT_fig3.png",width=11.7,height=10,dpi=320)
+  scale_fill_manual(values=c("#00BA38","#619CFF")) + theme_pubr() + theme(text = element_text(size = 7))
+ggsave("SIT_fig3.png",width=18,height=16,dpi=300,units="cm")
 
