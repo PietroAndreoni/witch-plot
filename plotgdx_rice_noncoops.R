@@ -1,5 +1,5 @@
 rm(list = ls())
-witch_folder = "../Results_srm/Mixedforplots" #Where you're RICE/DICE/RICE50x code is located
+witch_folder = "../Results_srm/Mixedforplots_2" #Where you're RICE/DICE/RICE50x code is located
 #main directory of your results files
 main_directory <- witch_folder # by default, the witch source folder
 subdir = c("") #can be multiple directories
@@ -33,42 +33,44 @@ I, , , I, g, fg, 1
 #runApp(appDir = "gdxcompaR/rice")
 
 sanitize <- function(.x) {
-.x %>% mutate(file=str_remove(file,"results")) %>%
+.x %>% 
   mutate(COOP=case_when(str_detect(file,"noncoop")~"noncoop",
                  str_detect(file,"coop")~"coop"),
-  POL=case_when(str_detect(file,"cba")~"cba",
-                 str_detect(file,"bau_impact")~"bau_impact" ),
   aggr=case_when(str_detect(file,"maxiso3")~"maxiso3",
                  str_detect(file,"ed57")~"ed57",
                  .default = "maxiso3"),
-  nsrm=case_when(str_detect(file,"_brics_")~"BRICS",
-              str_detect(file,"_sc_")~"UN Security Council",
-              str_detect(file,"scbrics")~"UN Security Council and BRICS",
-              str_detect(file,"wp")~"Major Powers",
-              str_detect(file,"_usa_")~"USA",
-              str_detect(file,"_ind_")~"India",
-              str_detect(file,"_idn_")~"Indonesia",
-              str_detect(file,"_bra_")~"Brazil",
-              str_detect(file,"_fra_")~"France",
-              str_detect(file,"_nga_")~"Nigeria",
-              str_detect(file,"_gbr_")~"Great Britain",
-              str_detect(file,"_rus_")~"Russia",
-              str_detect(file,"_chn_")~"China",
-              .default = "no SRM" ),
-  zinj=case_when(str_detect(file,"sovereign")~"sovereign",
-                str_detect(file,"free")~"free",
-                str_detect(file,"equator")~"equator",
-                .default = "no SRM" ),
-  timp=case_when(str_detect(file,"kalkuhl")~"KW",
-                str_detect(file,"burke")~"original BHM",
-                str_detect(file,"burkemod")~"modified BHM",
-                .default = "burkemod"),
-  pimp=case_when(str_detect(file,"P0")~"zero",
-                 str_detect(file,"P1")~"low",
-                 str_detect(file,"P3")~"medium",
-                 str_detect(file,"P5")~"high",
-                 .default = "no SRM") ) %>%
-    filter(nsrm %in% c("no SRM","USA","Brazil","India","Russia","China")  & pimp %in% c("no SRM","zero","high") )
+  POL=str_extract(file,"(?<=POL).+?(?=_)"),
+  nsrm=str_extract(file,"(?<=SRM).+?(?=_)"),
+  zinj=str_extract(file,"(?<=INJ).+?(?=_)"),
+  timp=str_extract(file,"(?<=IMPT).+?(?=[a-z])"),
+  ttype=str_extract(file,"(?<=IMPT[0-9]).+?(?=_)"),
+  pimp=str_extract(file,"(?<=IMPP).+?(?=[a-z])"),
+  ptype=str_extract(file,"(?<=IMPP[0-9]).+?(?=_)"),
+  tend=str_extract(file,"(?<=GE).*"),
+  spread=str_extract(file,"(?<=TSPR).*")) %>%
+  mutate( nsrm=case_when(nsrm=="brics"~"BRICS",
+                   nsrm=="sc"~"UN Security Council",
+                   nsrm=="scbrics"~"UN Security Council and BRICS",
+                   nsrm=="wp"~"Major Powers",
+                   nsrm=="usa"~"USA",
+                   nsrm=="ind"~"India",
+                   nsrm=="idn"~"Indonesia",
+                   nsrm=="bra"~"Brazil",
+                   nsrm=="fra"~"France",
+                   nsrm=="nga"~"Nigeria",
+                   nsrm=="gbr"~"Great Britain",
+                   nsrm=="rus"~"Russia",
+                   nsrm=="chn"~"China",
+                   .default = "no SRM" ),
+          POL = ifelse(is.na(POL),"cba",POL),
+          timp = ifelse(is.na(timp),"1",timp),
+          pimp = ifelse(is.na(pimp),"no SRM",pimp),
+          ptype = ifelse(is.na(ptype),"modified",ptype),
+          ttype = ifelse(is.na(ttype),"modified",ttype),
+          zinj = ifelse(is.na(zinj),"no SRM",zinj),
+          spread = ifelse(is.na(spread),"3",spread),
+          tend = ifelse(is.na(tend),"2200",tend) ) %>%
+    filter(nsrm %in% c("no SRM","USA","Brazil","India","Russia","China") )
 }
 
 injton <- function(.x) {
@@ -90,9 +92,14 @@ DAMFRAC <- get_witch("DAMFRAC")
 TATM <- get_witch("TATM")
 E <- get_witch("E")
 coef <- get_witch("climate_region_coef")
+coef_T <- get_witch("coeff_T") %>% select(n,V2,value) %>% unique() %>% rename(Coefficient=V2)
+coef_P <- get_witch("coeff_P") %>% select(n,V2,value) %>% unique() %>% rename(Coefficient=V2)
 pop <- get_witch("pop")
+Y <- get_witch("Y")
+YGROSS <- get_witch("YGROSS")
+ykali <- get_witch("ykali")
 
-sanitized_names <- as.data.frame(unique(SRM %>% select(file)) %>% sanitize())
+sanitized_names <- as.data.frame(unique(W_SRM %>% select(file)) %>% sanitize())
 sc <- c("usa","chn","fra","gbr","rus")
 brics <-  c("ind","chn","rus","bra","zaf")
 wp <-  c("usa","ind","chn","rus")
@@ -135,378 +142,171 @@ countries_map <- reg %>%
 
 regpalette_srm <- c("USA"="#E41A1C","China"="#377EB8","India"="#4DAF4A","China"="#984EA3","Brazil"="#FF7F00","Russia"="#5A5A5A","Others"="white","no SRM"="black")
 
-######### Figure 1
-# main <- ggplot(reg %>%
-#                  filter(iso3!='ATA') %>% 
-#                  mutate(nsrm=case_when(n=="usa"~"USA",
-#                                        n=="rus"~"Russia",
-#                                        n=="bra"~"Brazil",
-#                                        n=="ind"~"India",
-#                                        n=="chn"~"China",
-#                                        .default="Others"))) +
-#   geom_polygon(aes(x = long, y = lat,group = group, fill=nsrm),color='grey',size=.1)+
-#   geom_tile(data= Z_SRM %>% 
-#               rename(injsrm=value) %>% 
-#               inner_join(sanitized_names) %>%
-#               filter(ttoyear(t)==2100 & pimp %in% c("zero") & nsrm %in% c("USA","India","Brazil","Russia","China") & injsrm!=0  ) %>% 
-#               injton(), 
-#             aes(y=injn,height=injsrm/4,x=0,width=360,color=nsrm),fill="white",alpha=0,linewidth=1.2,linetype=1) +
-#   geom_tile(data= Z_SRM %>% 
-#               rename(injsrm=value) %>% 
-#               inner_join(sanitized_names) %>%
-#               filter(ttoyear(t)==2100 & pimp %in% c("high") & nsrm %in% c("USA","India","Brazil","Russia","China") & injsrm!=0 ) %>% 
-#               injton(), 
-#             aes(y=injn,height=injsrm/4,x=0,width=360,color=nsrm),fill="white",alpha=0,linewidth=1.2,linetype=3) +
-#   geom_hline(data=data.frame(lats=c(-45,-30,-15,0,15,30,45,60)),aes(yintercept=lats),linetype=2,color="grey",alpha=0.5) +
-#   theme_void() +
-#   theme(legend.position = "none", strip.text.x = element_text(size=12, face="bold"),legend.title = element_blank(),plot.title = element_text(hjust = 0.5)) + 
-#   scale_fill_manual(values=regpalette_srm) +
-#   scale_color_manual(values=regpalette_srm)+ 
-#   ylim(c(-60,85))
+dr <- 0.03
+NPVgdploss <- Y %>%
+  full_join(YGROSS %>% rename(ykali=value)) %>%
+  filter(ttoyear(t)<=2100) %>%
+  group_by(n,file) %>%
+  summarise(value = sum( (ykali-value)/(1+dr)^(t-1) ) / sum( (ykali)/(1+dr)^(t-1) ) )
 
+####### figure 1
+optimal_temperature <- coef_T %>%
+  group_by(n) %>%
+  summarise(opttemp=-value[Coefficient=="b"]/(2*value[Coefficient=="c"])) 
 
-main <- ggplot(Z_SRM %>% 
-         inner_join(sanitized_names) %>% 
-         filter(ttoyear(t) <= 2150 & inj!="15S") %>%
-         group_by(file,inj) %>%
-         filter(!(min(value)==0 & max(value)==0))) + 
-  geom_line(aes(x=ttoyear(t),
-                y=value,
-                color=nsrm,
-                linetype=pimp),
-            linewidth=1) +
-  geom_line(data=.%>% 
-              group_by(t,file,pimp,nsrm) %>%
-              summarise(value=sum(value)) %>%
-              mutate(inj="Global"),
-            aes(x=ttoyear(t),
-                y=value,
-                color=nsrm,
-                linetype=pimp),
-            linewidth=1.2 ) +
-  scale_color_manual(values=regpalette_srm,
-                     name="Free-driver") +
-  scale_linetype_manual(values=c(2,1),name="Precipitation impacts") + 
-  facet_wrap(inj~.,) +
-  xlab("") + ylab("SAI injection [TgS/yr]") + theme(legend.position="none")
-
-temp_vbase <- TEMP %>% 
-  rename(temp=value) %>%
-  inner_join(coef %>% filter(V1=="alpha_temp") %>% rename(preind=value)) %>%
-  group_by(file,n) %>%
-  mutate(temp=temp-preind) %>%
+### main figure: underprovision of SAI vs overprovision
+damageshighlat <- NPVgdploss %>% 
+  inner_join(pop %>% 
+               filter(ttoyear(t)<=2100) %>% 
+               group_by(n,file) %>%
+               summarise(pop=mean(value)) ) %>%
   inner_join(sanitized_names) %>%
-  filter(ttoyear(t)==2100 & pimp %in% c("high","zero") & nsrm %in% c("no SRM","USA","Russia","China")  ) %>% 
-  inner_join(N_SRM %>% rename(srm=value))  %>% 
-  inner_join(countries_map) %>% 
-  ggplot() +
-  geom_point(data=.%>%filter(srm!=0 & nsrm !="no SRM"),
-             aes(x=meanlat,
-                 y=temp,
-                 color=nsrm,shape=pimp),size=5) + 
+  filter(pimp %in% c("no SRM","1") & nsrm %in% c("no SRM","USA","China","Russia","India","Brazil") ) %>%
+  inner_join(countries_map) %>%
+  group_by(n) %>%
+  mutate(damrel = value - value[COOP=="coop" & nsrm=="no SRM"]) %>%
+  filter(COOP=="noncoop" & nsrm!="no SRM") %>%
+  ggplot() + 
+  geom_hline(yintercept=0) +
+  geom_vline(data=data.frame(lats=c(-45,-30,-15,0,15,30,45,60)),
+             aes(xintercept=lats),
+             linetype=2,
+             color="grey",
+             alpha=0.5) +
+  geom_point(aes(x=meanlat,
+                 y=damrel*100,
+                 color=nsrm),
+             alpha=0.2) + 
   stat_smooth(aes(x=meanlat,
-                  y=temp,
+                  y=damrel*100,
                   color=nsrm,
-                  linetype=pimp), se = FALSE ) +
-  stat_smooth(data=
-                TEMP %>% 
-                rename(temp=value) %>%
-                inner_join(coef %>% filter(V1=="alpha_temp") %>% rename(preind=value)) %>%
-                group_by(file,n) %>%
-                mutate(temp=temp-preind) %>%
-                inner_join(sanitized_names) %>%
-                filter(ttoyear(t)==2100 & pimp %in% c("no SRM") & nsrm %in% c("no SRM")  & COOP=="noncoop")  %>% 
-                inner_join(countries_map),
-              aes(x=meanlat,
-                  y=temp), 
-              color="black", 
-              se = FALSE ) +
-  stat_smooth(data=
-                TEMP %>% 
-                rename(temp=value) %>%
-                inner_join(coef %>% filter(V1=="alpha_temp") %>% rename(preind=value)) %>%
-                group_by(file,n) %>%
-                mutate(temp=temp-preind) %>%
-                inner_join(sanitized_names) %>%
-                filter(ttoyear(t)==2100 & pimp %in% c("no SRM") & nsrm %in% c("no SRM")  & COOP=="coop")  %>% 
-                inner_join(countries_map),
-              aes(x=meanlat,
-                  y=temp), 
-              color="black", 
-              linetype=2,
-              se = FALSE ) +
-  geom_hline(yintercept=0) +
-  geom_vline(data=data.frame(lats=c(-45,-30,-15,0,15,30,45,60)),
-             aes(xintercept=lats),
-             linetype=2,
-             color="grey",
-             alpha=0.5) +
-  theme(legend.position="bottom",legend.box="vertical") +
-  scale_color_manual(values=regpalette_srm,name="Free driver") +
-  scale_linetype_manual(values=c(2,1),name="Precipitation impacts") +
-  guides(shape = "none") +
-  xlab("") + ylab("Temperature variation \n[°C relative to preindustrial]") + 
-  theme_pubr() +
-  xlim(c(-60,85))
-
-
-precip_vbase <- DPRECIP_SRM %>% rename(prec=value) %>% 
-  inner_join(sanitized_names) %>%
-  filter(ttoyear(t)==2100 & pimp %in% c("zero","high") & nsrm %in% c("USA","China","Russia")  ) %>%   
-  inner_join(N_SRM %>% rename(srm=value))  %>% 
-  inner_join(countries_map) %>% 
-  ggplot() +
-  geom_point(data=.%>%filter(srm!=0 & nsrm !="no SRM"),aes(x=meanlat,y=prec*100,color=nsrm,shape=pimp),size=5) + 
-  stat_smooth(data=.%>%filter(nsrm !="no SRM"),aes(x=meanlat,y=prec*100,color=nsrm,linetype=pimp), se = FALSE ) +
-  geom_hline(yintercept=0) +
-  geom_vline(data=data.frame(lats=c(-45,-30,-15,0,15,30,45,60)),aes(xintercept=lats),linetype=2,color="grey",alpha=0.5) +
-  theme(legend.position="bottom") +
-  scale_color_manual(values=regpalette_srm) +
-  theme(legend.position="bottom",legend.box="vertical") +
-  scale_color_manual(values=regpalette_srm,name="Free driver") +
-  scale_linetype_manual(values=c(2,1),name="Precipitation impacts") +
-  guides(shape = "none") +
-  xlab("") + ylab("Precipitation variation \n[% of baseline precipitation]") + 
-  theme_pubr() + 
-  xlim(c(-60,85)) + ylim(c(-50,50))
-# 
-# fig1_noncoops_vertical <- cowplot::plot_grid(temp_vbase +
-#                                                theme(legend.position="none",
-#                                                      axis.line.y=element_blank(),
-#                                                      axis.title.y = element_blank(),
-#                                                      axis.text.y = element_blank(),
-#                                                      axis.ticks.y = element_blank())+
-#                                                rotate() +
-#                                                scale_y_reverse(),
-#                                              main,
-#                                              precip_vbase +
-#                                                theme(legend.position="none",
-#                                                      axis.line.y=element_blank(),
-#                                                      axis.title.y = element_blank(),
-#                                                      axis.text.y = element_blank(),
-#                                                      axis.ticks.y = element_blank()) +
-#                                                rotate(),
-#                                              ncol = 3,
-#                                              align = "h",
-#           rel_widths = c(1, 3, 1), rel_heights = c(1, 1, 1))
-
-fig1_noncoops <- cowplot::plot_grid(ggarrange(temp_vbase, precip_vbase, common.legend = TRUE, labels=c("a","b") ), main, ncol = 1, nrow=2,
-                                             rel_widths = c(1, 1), rel_heights = c(1, 1.2)) 
-
-ggsave("fig1_noncoops.png",plot=fig1_noncoops,units=c("cm"),width = 20,height=20)
-
-######### Figure 2
-right <- DAMFRAC %>% 
-  inner_join(sanitized_names) %>%
-  filter(ttoyear(t)==2100 & pimp %in% c("no SRM","high") & nsrm %in% c("no SRM","USA","India","Brazil","Russia","China")  ) %>% 
-  inner_join(DTEMP_SRM %>% rename(temp=value))  %>%
-  inner_join(N_SRM %>% rename(srm=value))  %>% 
-  inner_join(countries_map) %>% 
-  ggplot() +
-#  geom_point(data=.%>%filter(srm==0),aes(x=meanlat,y=value*100,color=nsrm),size=0.5,alpha=0.5) + 
-#  geom_point(data=.%>%filter(srm!=0 & nsrm !="no SRM"),aes(x=meanlat,y=value*100,color=nsrm),size=2) + 
-  stat_smooth(aes(x=meanlat,y=value*100,color=nsrm,linetype=COOP), se = FALSE ) +
-  geom_hline(yintercept=0) +
-  geom_vline(data=data.frame(lats=c(-45,-30,-15,0,15,30,45,60)),
-             aes(xintercept=lats),
-             linetype=2,
-             color="grey",
-             alpha=0.5) +
-  theme(legend.position="bottom") +
-  scale_color_manual(values=regpalette_srm,name="Free driver") +
-  scale_linetype_manual(values=c(2,1),name="Precipitation impacts") +
-  xlab("") + ylab("Damages [% of baseline GDP]") + 
-  theme(legend.position="none") + 
-  xlab("Damages, high precipitation impacts \n [% GDP]") + ylab("")
-
-
-left <- DAMFRAC %>% 
-  inner_join(sanitized_names) %>%
-  filter(ttoyear(t)==2100 & pimp %in% c("no SRM","zero") & nsrm %in% c("no SRM","USA","India","Brazil","Russia","China")  ) %>% 
-  inner_join(DTEMP_SRM %>% rename(temp=value))  %>%
-  inner_join(N_SRM %>% rename(srm=value))  %>% 
-  inner_join(countries_map) %>% 
-  ggplot() +
-#  geom_point(data=.%>%filter(srm==0),aes(x=meanlat,y=value*100,color=nsrm),size=0.5,alpha=0.5) + 
-#  geom_point(data=.%>%filter(srm!=0 & nsrm !="no SRM"),aes(x=meanlat,y=value*100,color=nsrm),size=2,shape=17) + 
-  stat_smooth(aes(x=meanlat,y=value*100,color=nsrm,linetype=COOP), se = FALSE ) +
-#  geom_point(aes(x=meanlat,y=value*100,color=nsrm), alpha = 0.5 ) +
-  geom_hline(yintercept=0) +
-  geom_vline(data=data.frame(lats=c(-45,-30,-15,0,15,30,45,60)),
-             aes(xintercept=lats),
-             linetype=2,
-             color="grey",
-             alpha=0.5) +
-  theme(legend.position="bottom") +
-  scale_color_manual(values=regpalette_srm,name="Free driver") +
-  scale_linetype_manual(values=c(2,1),name="Precipitation impacts") +
-  xlab("") + ylab("Damages [% of baseline GDP]") + 
-  theme(legend.position="none") +
-  xlab("Damages, no precipitation impacts \n [% GDP]") + ylab("")
-
-delta <- DAMFRAC %>% 
-  inner_join(sanitized_names) %>% 
-  filter(ttoyear(t)==2100 & pimp %in% c("zero","high") & nsrm %in% c("USA","India","Brazil","Russia","China") ) %>% 
-  inner_join(N_SRM %>% rename(srm=value))  %>% 
-  inner_join(countries_map) %>% 
-  select(-file) %>%
-  pivot_wider(names_from=pimp,values_from=value) %>%
-  ggplot() +
-  stat_smooth(aes(x=meanlat,y=(high-zero)*100,color=nsrm)) +
-#  geom_point(aes(x=meanlat,y=(high-zero)*100,color=nsrm),alpha=0.5) +
-  geom_hline(yintercept=0) +
-  geom_vline(data=data.frame(lats=c(-45,-30,-15,0,15,30,45,60)),
-             aes(xintercept=lats),
-             linetype=2,
-             color="grey",
-             alpha=0.5) +
-  scale_color_manual(values=regpalette_srm,
-                     name="Free driver" ) +
+                  weight=pop), 
+              se = FALSE,
+              linewidth=2) +
   theme(legend.position="bottom") + 
-  xlab("Difference in damages, high - no precipitation \n [% GDP]") + ylab("")
+  theme_pubr() + 
+  scale_color_manual(values=regpalette_srm,
+                     name="Free driver") +
+  scale_fill_manual(values=regpalette_srm,
+                    name="Free driver") +
+  guides(shape="none") +
+  xlab("Average country latitude") + 
+  ylab("Damages [% of GDP]") + theme(legend.position = "right",
+                                     text=element_text(size=7))
 
-void <- ggplot() + theme_void()
-fig2_noncoops <- cowplot::plot_grid(ggarrange(void,left,void,ncol=1,heights=c(0.35,1,0.35)), 
-                       delta, 
-                       ggarrange(void,right,void,ncol=1,heights=c(0.35,1,0.35)), 
-                       ncol = 3, rel_widths = c(1, 1.35, 1), rel_heights = c(1, 1, 1), align="hv") 
-
-ggsave("fig2_noncoops.png",plot=fig2_noncoops,units=c("cm"),width = 18,height=9)
-
-######## temperature and emissions
-tempg <- ggplot(land_temp %>%
-         inner_join(sanitized_names) %>%
-         filter(ttoyear(t) <= tend)) + 
-  geom_line(data=.%>%filter(nsrm!="no SRM"),
-            aes(x=ttoyear(t),
-                y=value-land_temp0,
-                color=nsrm,
-                linetype=pimp), 
-            linewidth=1.2) +
-  geom_line(data=.%>%filter(nsrm=="no SRM" & COOP=="noncoop"),
-            aes(x=ttoyear(t),
-                y=value-land_temp0), 
-            linewidth=1.2,color="black") +
-  geom_line(data=.%>%filter(nsrm=="no SRM" & COOP=="coop"),
-            aes(x=ttoyear(t),
-                y=value-land_temp0), 
-            linewidth=1.2,color="black",linetype=2) +
-  xlab("") + ylab("Average land temperature [°C]") +
-  scale_color_manual(values=regpalette_srm,name="Free driver") +
-  scale_linetype_manual(values=c(2,1),name="Precipitation impacts") 
-
-emig <- ggplot(E %>% 
-         filter(ttoyear(t) <= tend) %>%
-         group_by(file,t) %>% 
-         summarise(value=sum(value)) %>%
-         inner_join(sanitized_names) ) + 
-  geom_line(data=.%>%filter(nsrm!="no SRM"),
-            aes(x=ttoyear(t),
-                y=value,
-                color=nsrm,
-                linetype=pimp), 
-            linewidth=1.2) +
-  geom_line(data=.%>%filter(nsrm=="no SRM" & COOP=="noncoop"),
-            aes(x=ttoyear(t),
-                y=value), 
-            linewidth=1.2,color="black" ) +
-  
-  geom_line(data=.%>%filter(nsrm=="no SRM" & COOP=="coop"),
-            aes(x=ttoyear(t),
-                y=value), 
-            linewidth=1.2,color="black",linetype=2 ) +
-  xlab("") + ylab("Emisssions [CtCO2/yr]")+
-  scale_color_manual(values=regpalette_srm,name="Free driver") +
-  scale_linetype_manual(values=c(2,1),name="Precipitation impacts") 
-
-fig3_noncoops <- ggarrange(tempg,emig,nrow=1,common.legend = TRUE)
-ggsave("fig3_noncoops.png",plot=fig3_noncoops,width=18, height=9, units="cm")
-
-
-
-###### gini index/lorenz curve/welfare analysis
-Y <- get_witch("Y")
-ykali <- get_witch("ykali")
-
-gini <- Y %>% 
-  inner_join(pop %>% rename(pop=value)) %>%
-  group_by(t,file) %>%
-  summarise(gini=reldist::gini(value/pop,pop),
-            theil=dineq::theil.wtd(value/pop,pop))
-
-giniplot <- ggplot(gini %>% 
-         inner_join(sanitized_names) %>% 
-         filter(ttoyear(t)<=tend)) +
-  geom_line(data=.%>%filter(nsrm!="no SRM"),
-            aes(x=ttoyear(t),
-                y=gini,
-                color=nsrm,
-                linetype=pimp), 
-            linewidth=1.2) +
-  geom_line(data=.%>%filter(nsrm=="no SRM" & COOP=="noncoop"),
-            aes(x=ttoyear(t),
-                y=gini), 
-            linewidth=1.2,color="black") +
-  geom_line(data=.%>%filter(nsrm=="no SRM" & COOP=="coop"),
-            aes(x=ttoyear(t),
-                y=gini), 
-            linewidth=1.2,color="black",linetype=2) +
-  scale_color_manual(values=regpalette_srm,name="Free driver") +
-  scale_linetype_manual(values=c(2,1),name="Precipitation impacts") + 
-  xlab("") + ylab("Gini index (between country inequality)")
-
-gdploss <- Y %>% 
-  inner_join(ykali %>% rename(ykali=value)) %>%
-  group_by(t,file) %>%
-  summarise(gdploss=(sum(ykali)-sum(value))/sum(ykali))
-
-globdam <- gdploss %>%
+NPVgdploss %>% 
+  inner_join(pop %>% 
+               filter(ttoyear(t)<=2100) %>% 
+               group_by(n,file) %>%
+               summarise(pop=mean(value)) ) %>%
   inner_join(sanitized_names) %>%
-  filter(ttoyear(t)<=tend & pimp %in% c("no SRM","zero","high") & nsrm %in% c("no SRM","USA","India","Brazil","Russia","China")  ) %>%
-  ggplot() +
-  geom_line(data=.%>%filter(nsrm!="no SRM"),
-            aes(x=ttoyear(t),
-                y=gdploss,
-                color=nsrm,
-                linetype=pimp), 
-            linewidth=1.2) +
-  geom_line(data=.%>% filter(nsrm=="no SRM" & COOP=="noncoop"),
-            aes(x=ttoyear(t),
-                y=gdploss), 
-            linewidth=1.2,color="black") +
-  geom_line(data=.%>% filter(nsrm=="no SRM" & COOP=="coop"),
-            aes(x=ttoyear(t),
-                y=gdploss), 
-            linewidth=1.2,color="black",linetype=2) +
-  scale_color_manual(values=regpalette_srm,name="Free driver") +
-  scale_linetype_manual(values=c(2,1),name="Precipitation impacts") + 
-  xlab("") + ylab("Fraction of GDP loss")
+  filter(pimp %in% c("no SRM","1") & nsrm %in% c("no SRM","USA","India","Brazil","China") ) %>%
+  inner_join(countries_map) %>%
+  group_by(n) %>%
+  mutate(damrel = value - value[COOP=="coop" & nsrm=="USA"]) %>%
+  filter(COOP=="noncoop" & !nsrm %in% c("no SRM") ) %>%
+  ggplot() + 
+  geom_hline(yintercept=0) +
+  geom_vline(data=data.frame(lats=c(-45,-30,-15,0,15,30,45,60)),
+             aes(xintercept=lats),
+             linetype=2,
+             color="grey",
+             alpha=0.5) +
+  geom_point(aes(x=meanlat,
+                 y=damrel*100,
+                 color=nsrm),
+             alpha=0.2) + 
+  stat_smooth(aes(x=meanlat,
+                  y=damrel*100,
+                  color=nsrm,
+                  weight=pop), 
+              se = FALSE,
+              linewidth=2) +
+  theme(legend.position="bottom") + 
+  theme_pubr() + 
+  scale_color_manual(values=regpalette_srm,
+                     name="Free driver") +
+  scale_fill_manual(values=regpalette_srm,
+                    name="Free driver") +
+  guides(shape="none") +
+  xlab("Average country latitude") + 
+  ylab("Damages [% of GDP]") + theme(legend.position = "right",
+                                     text=element_text(size=7))
 
-fig4_noncoops <- ggarrange(globdam,giniplot,nrow=1,common.legend = TRUE)
-ggsave("fig4_noncoops.png",plot=fig4_noncoops,width=18, height=9, units="cm")
 
-#########
-IMPACT %>%
-  filter(d %in% c("prec","temp") & 
-           n %in% c("usa","ind","bra","chn","can","fra","mex") & 
-           ttoyear(t)<=2150) %>%
-  group_by(file,t,d) %>%
-  # summarise(med=median(value),min=quantile(value,0.33),max=quantile(value,0.66)) %>%
+TEMP %>% 
+  rename(temp=value) %>%
   inner_join(sanitized_names) %>%
+  filter(ttoyear(t)==2100 & pimp %in% c("1") & nsrm %in% c("USA","India","Brazil","China") & COOP=="noncoop" ) %>%
+  inner_join(optimal_temperature) %>%
+  mutate(value=-(temp-opttemp) ) %>%
+  full_join(reg %>% filter(iso3!='ATA')) %>% 
   ggplot() +
-  geom_line(aes(x=ttoyear(t),y=value,color=file,linetype=d)) +
-  facet_wrap(n~.,)
+  geom_polygon(aes(x = long, y = lat,group = group, fill = value ),color='black',size=.1) +
+  scale_fill_gradient2() + theme_void()+ theme(panel.background = element_rect(fill="white",color="white")) +
+  facet_wrap(nsrm~.,)
 
+W_SRM %>% 
+  inner_join(sanitized_names) %>%
+  filter(ttoyear(t)<=2280 & pimp %in% c("1") & nsrm %in% c("USA","India","Brazil","China") ) %>%
+  ggplot() +
+  geom_line(aes(x=ttoyear(t),y=value,color=nsrm,linetype=COOP))
 
-###### precipitation impact vs temperature analysis
+get_witch("W_EMI") %>% 
+  inner_join(sanitized_names) %>%
+  filter(ghg=="co2" & ttoyear(t)<=2280 & pimp %in% c("1") & nsrm %in% c("USA","India","Brazil","China") ) %>%
+  ggplot() +
+  geom_line(aes(x=ttoyear(t),y=value,color=nsrm,linetype=COOP))
 
 DPRECIP_SRM %>% 
-  mutate(precdg = - 0.05*value^2) %>%
-  inner_join(IMPACT %>% 
-               filter(d=="temp") %>% rename(tempdg=value)) %>%
-  select(-value,-d) %>%
-  pivot_longer(c(tempdg,precdg))  %>%
   inner_join(sanitized_names) %>%
-  filter(ttoyear(t)==2100 & pimp=="zero") %>%
+  filter(ttoyear(t)==2100 & pimp %in% c("1") & nsrm %in% c("USA","India","Brazil","China") & COOP=="noncoop" ) %>%
+  full_join(reg %>% filter(iso3!='ATA')) %>% 
+  #mutate(value=arules::discretize(value,breaks=5)) %>%
   ggplot() +
-  geom_boxplot(aes(x=nsrm,y=- value,fill=name))
+  geom_polygon(aes(x = long, y = lat,group = group, fill = value ),color='black',size=.1) +
+  scale_fill_gradient2() + 
+  theme_void()+ theme(panel.background = element_rect(fill="white",color="white")) +
+  facet_wrap(nsrm~.,)
+
+
+DPRECIP_SRM %>%
+  filter(ttoyear(t) == 2100) %>%
+  inner_join(pop %>% 
+               filter(ttoyear(t)==2100) %>% 
+               group_by(n,file) %>%
+               summarise(pop=mean(value)) ) %>%
+  inner_join(sanitized_names) %>%
+  filter(pimp %in% c("1") & nsrm %in% c("USA","India","Brazil","China") & COOP=="noncoop" ) %>%
+  inner_join(countries_map) %>%
+  ggplot() + 
+  geom_hline(yintercept=0) +
+  geom_vline(data=data.frame(lats=c(-45,-30,-15,0,15,30,45,60)),
+             aes(xintercept=lats),
+             linetype=2,
+             color="grey",
+             alpha=0.5) +
+  geom_point(aes(x=meanlat,
+                 y=value*100,
+                 shape=pimp,
+                 color=nsrm),
+             alpha=0.2) + 
+  stat_smooth(aes(x=meanlat,
+                  y=value*100,
+                  color=nsrm,
+                  linetype=pimp,
+                  weight=pop), 
+              se = FALSE,
+              linewidth=2) +
+  theme(legend.position="bottom") + 
+  theme_pubr() + 
+  scale_color_manual(values=regpalette_srm,
+                     name="Free driver") +
+  scale_fill_manual(values=regpalette_srm,
+                    name="Free driver") +
+  guides(shape="none") +
+  xlab("Average country latitude") + 
+  ylab("Damages [% of GDP]") + theme(legend.position = "right",
+                                     text=element_text(size=7))# +
+  facet_wrap(d~.,)
+
