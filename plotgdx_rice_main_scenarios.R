@@ -143,8 +143,8 @@ countries_map <- reg %>%
   summarise(minlat=min(lat),maxlat=max(lat),meanlat=mean(lat),
             minlong=min(long),maxlong=max(long),meanlong=mean(long) )%>%  
   mutate(latitude=abs(round(meanlat/15)*15) ) %>% 
-  mutate(latitude=case_when(latitude==15 | n=="ind"  ~ "Tropical",
-                            latitude==0  ~ "Equatorial",
+  mutate(latitude=case_when((latitude==15 | n=="ind") & n!="bra"  ~ "Tropical",
+                            latitude==0 | n=="bra" ~ "Equatorial",
                             latitude==30 ~ "Subtropical",
                             latitude %in% c(45,60,75) ~ "High latitudes")) %>%
   mutate(latitude=ordered(latitude,c("Equatorial","Tropical","Subtropical","High latitudes")))
@@ -188,7 +188,6 @@ damfrac_type <- get_witch("damfrac_type") %>%
 
 gdploss <- Y %>%
   full_join(YGROSS %>% rename(ykali=value)) %>%
-  filter(ttoyear(t)<=2100) %>%
   mutate(value=(ykali-value)/ykali )  %>%
   inner_join(sanitized_names) %>%
   group_by(t,n,pimp) %>%
@@ -196,7 +195,6 @@ gdploss <- Y %>%
 
 gdploss_g <- Y %>%
   full_join(YGROSS %>% rename(ykali=value)) %>%
-  filter(ttoyear(t)<=2100) %>%
   group_by(file,t) %>%
   summarise(value=sum(ykali-value)/sum(ykali) )  %>%
   inner_join(sanitized_names) %>%
@@ -205,7 +203,6 @@ gdploss_g <- Y %>%
 
 damfrac_g <- DAMAGES %>%
   full_join(YGROSS %>% rename(ykali=value)) %>%
-  filter(ttoyear(t)<=2100) %>%
   group_by(file,t) %>%
   summarise(value=sum(value)/sum(ykali) ) 
 

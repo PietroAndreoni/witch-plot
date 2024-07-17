@@ -1,5 +1,5 @@
 main_scenarios_coop <- sanitized_names %>% 
-  filter(COOP=="coop" & spread==1 & tend==2200 & ptype=="modified" & ttype=="modified" & pimp %in% c(1,5))
+  filter(COOP=="coop" & spread==1 & tend==2200 & ptype=="modified" & ttype=="modified" & pimp %in% c(5))
 
 coop_palette <- c("Optimal, no SAI"="#00A36C",
                   "0.2"="#e8f4f8",

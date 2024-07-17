@@ -52,6 +52,8 @@ kotz <- read.csv("kotz_analysis_precipitations.csv") %>%
 
 
 impacts_prec <- coef_P %>%
+  filter(file %in% c("noncoop_maxiso3_SRMusa_INJfree_POLcba_IMPT10modified_IMPP50modified_TSPR1",
+                     "noncoop_maxiso3_SRMusa_INJfree_POLcba_IMPT10modified_IMPP10modified_TSPR1")  ) %>%
   group_by(n,file,value,Coefficient) %>%
   expand(prec=seq(-3,+3,by=0.1)) %>%
   inner_join(optimal_precipitation) %>%
@@ -86,7 +88,9 @@ impacts_prec <- coef_P %>%
                 fill=latitude,
                 group=interaction(pimp,latitude) ),
               alpha=0.2) +
-  scale_linetype_manual(values=c(2,1)) + 
+  scale_linetype_manual(values=c(2,1),
+                        name="Precipitation impacts",
+                        labels=c("Low","High") ) + 
   theme_pubr() + xlab("Precipitation variation [std]") + ylab("% loss GDP/yr")
 
 impacts <- ggarrange(impacts_temp,impacts_prec,common.legend=TRUE)   
