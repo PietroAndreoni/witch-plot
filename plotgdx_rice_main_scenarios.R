@@ -69,10 +69,10 @@ sanitize <- function(.x) {
           pimp = ifelse(is.na(pimp),"5",as.character(as.numeric(pimp)/10)),
           ptype = ifelse(is.na(ptype),"modified",ptype),
           ttype = ifelse(is.na(ttype),"modified",ttype),
-          zinj = ifelse(is.na(zinj),"no SRM",zinj),
+          zinj = ifelse(zinj=="no","no SRM",zinj),
           spread = ifelse(is.na(spread),"1",spread),
           tend = ifelse(is.na(tend),"2200",tend) ) %>%
-    mutate(nsrm=ifelse(nsrm=="USA" & COOP=="coop", "Cooperative", nsrm) )
+    mutate(nsrm=ifelse(nsrm=="USA" & COOP=="coop", "Cooperative", nsrm) ) 
 }
 
 injton <- function(.x) {
@@ -102,7 +102,7 @@ Y <- get_witch("Y")
 YGROSS <- get_witch("YGROSS")
 ykali <- get_witch("ykali")
 
-sanitized_names <- as.data.frame(unique(W_SRM %>% select(file)) %>% sanitize())
+sanitized_names <- as.data.frame(unique(W_SRM %>% select(file)) %>% sanitize()) 
 sc <- c("usa","chn","fra","gbr","rus")
 brics <-  c("ind","chn","rus","bra","zaf")
 wp <-  c("usa","ind","chn","rus")
@@ -128,8 +128,8 @@ land_temp0 <- as.numeric(coef %>%
   inner_join(area) %>%
   summarise(ltemp0=weighted.mean(value,area)))
 
-theme_set(theme_gray(base_size = 7))
-theme_set(theme_pubr(base_size = 7))
+theme_set(theme_gray(base_size = 12))
+theme_set(theme_pubr(base_size = 12))
 
 maps <- map_data("world")
 maps=data.table(maps)
@@ -149,14 +149,14 @@ countries_map <- reg %>%
                             latitude %in% c(45,60,75) ~ "High latitudes")) %>%
   mutate(latitude=ordered(latitude,c("Equatorial","Tropical","Subtropical","High latitudes")))
 
-regpalette_srm <- c("Cooperative"="#7393B3",
-                    "USA"="#E41A1C",
+regpalette_srm <- c("Optimal"="#121B54",
+                    "Optimal, no SAI"="#00A36C",
+                    "USA"="#c71585",
                     "China"="#377EB8",
-                    "India"="#4DAF4A",
-                    "Australia"="#984EA3",
+                    "India"="#E41A1C",
                     "Brazil"="#FF7F00",
                     "Others"="white",
-                    "no SRM"="black")
+                    "Free-riding"="black")
 
 dr <- 0.03
 NPVgdploss <- Y %>%
@@ -218,5 +218,14 @@ brackets <- damfrac_type %>%
   mutate(bracket = arules::discretize(value,
                                       breaks=c(-50,-20,-10,-5,-1,-0.1,0.1,1,5,10,20,50),
                                       method="fixed"))
+TATM <- get_witch("TATM")
+land_temp_nogeong <- TATM %>% 
+  select(-n) %>%
+  inner_join(coef %>% 
+               filter(V1 %in% c("alpha_temp","beta_temp")) %>% 
+               pivot_wider(names_from=V1)) %>%
+  inner_join(area) %>%
+  group_by(file,t) %>%
+  summarise(value=weighted.mean(alpha_temp+beta_temp*value,area))
 
   

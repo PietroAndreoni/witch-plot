@@ -8,24 +8,6 @@ coop_palette <- c("Optimal, no SAI"="#00A36C",
                   "2"="#0000FF",
                   "5"="#121B54")
 
-srm2100 <- Z_SRM %>%
-  inner_join(main_scenarios_coop) %>%
-  filter(ttoyear(t)==2100 & 
-           !pimp %in% c("no SRM") & 
-           !inj %in% c("60N","60S")) %>% 
-  mutate(inj=ifelse(str_detect(inj,"S"), -as.numeric(str_remove(inj,"S")),as.numeric(str_remove(inj,"N")))) %>%
-  ggplot() +
-  geom_bar(aes(x=as.factor(inj),
-               y=value,
-               fill=pimp),
-           position="dodge",stat="identity",color="black") +
-  scale_fill_manual(values=coop_palette,
-                    name="Precipitation impacts") +
-  xlab("") + ylab("SAI [TGS/yr]") +
-  theme_pubr() +
-  theme(legend.position = "none",
-        text=element_text(size=7))
-
 regtemp2100 <- TEMP %>% 
   rename(temp=value) %>%
   inner_join(coef %>% filter(V1=="alpha_temp") %>% rename(preind=value)) %>%
@@ -86,7 +68,7 @@ regtemp2100 <- TEMP %>%
                      labels=c("SAI","2°C")) +
   xlab("") + ylab("Local temperature increase to preindustrial [°C]") + 
   theme_pubr() + theme(legend.position = "none",
-                       text=element_text(size=7))
+                       text=element_text(size=12))
 
 precip2100 <- PREC %>% rename(prec=value) %>% 
   inner_join(main_scenarios_coop) %>%
@@ -137,7 +119,7 @@ precip2100 <- PREC %>% rename(prec=value) %>%
                      labels=c("SAI","2°C")) +
   xlab("") + ylab("Precipitation variation [STD]") + 
   theme_pubr() + theme(legend.position = "none",
-                       text=element_text(size=7))
+                       text=element_text(size=12))
 
 damages2100 <- gdploss %>%  
   filter(ttoyear(t)==2100 ) %>% 
@@ -167,14 +149,14 @@ damages2100 <- gdploss %>%
   theme_pubr() + 
   scale_color_manual(values=coop_palette,
                      name="Scenario",
-                     labels=c("SAI, low precipitation impacts","SAI, high precipitation impacts","2°C")) +
+                     labels=c("Optimal SAI","2°C")) +
   scale_fill_manual(values=coop_palette,
                     name="Scenario",
                     labels=c("SAI","2°C")) +
   guides(shape="none") +
   xlab("Average country latitude") + 
   ylab("GDP loss [%]") + theme(legend.position = "right",
-                                     text=element_text(size=7))
+                                     text=element_text(size=12))
 
 void <- ggplot() + theme_void() + theme(panel.background = element_rect(fill="white",color="white"))
 fig2_coops <- ggarrange(ggarrange(regtemp2100,precip2100,nrow=1),

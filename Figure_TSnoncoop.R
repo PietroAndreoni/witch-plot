@@ -1,28 +1,14 @@
-
-W_EMI <- get_witch("W_EMI")
-W_EMI %>% 
+figa <- W_SRM %>%
   inner_join(sanitized_names) %>%
   mutate(Scenario=case_when(nsrm=="no SRM" & COOP=="coop" ~ "Optimal, no SAI",
                             nsrm=="Cooperative" & COOP=="coop" ~ "Optimal",
                             nsrm=="no SRM" & COOP=="noncoop" ~ "Free-riding",
                             .default=nsrm) ) %>%
-  filter(ttoyear(t)<=2100 & ghg=="co2" & pimp %in% c(5)) %>%
-  ggplot() +
-  geom_line(aes(x=ttoyear(t),
-                y=value*3.66,
-                color=Scenario),
-            linewidth=1) +
-  geom_hline(yintercept=0) +
-  scale_color_viridis_d(name="Scenario") +
-  xlab("") + ylab("Global emissions [GtCO2/yr]") 
-
-W_SRM %>% 
-  inner_join(sanitized_names) %>%
   filter(ttoyear(t)<=2100 & pimp %in% c(5) & nsrm != "no SRM") %>%
   ggplot() +
   geom_line(aes(x=ttoyear(t),
                 y=value,
-                color=nsrm),
+                color=Scenario),
             linewidth=1) +
   ggrepel::geom_text_repel(data=.%>% inner_join(Z_SRM %>% 
     inner_join(sanitized_names) %>%
@@ -34,20 +20,32 @@ W_SRM %>%
       y= value,
       label=paste0(round(zonalinj,0),"tgS/yr at ",inj), 
       color=nsrm ) ) +
-  scale_color_manual(values=regpalette_srm, name="SAI deployer") +
+  scale_color_manual(values=regpalette_srm, name="Scenario") +
+  guides(text="none") +
   xlab("") + ylab("SAI [TgS/yr]") + theme_pubr()
 
   
 
-land_temp %>%
+figb <- land_temp %>%
   inner_join(sanitized_names) %>%
+  mutate(Scenario=case_when(nsrm=="no SRM" & COOP=="coop" ~ "Optimal, no SAI",
+                            nsrm=="Cooperative" & COOP=="coop" ~ "Optimal",
+                            nsrm=="no SRM" & COOP=="noncoop" ~ "Free-riding",
+                            .default=nsrm) ) %>%
   filter(ttoyear(t)<=2100 & pimp==5) %>%
-  ggplot(aes(x=ttoyear(t),y=value-land_temp0,color=nsrm,linetype=pimp,group=file)) +
-  geom_line() +
+  ggplot(aes(x=ttoyear(t),y=value-land_temp0,color=Scenario,group=file)) +
+  geom_line(linewidth=1) +
   geom_line(data=land_temp_nogeong %>%
-              inner_join(main_scenarios_coop) %>%
-              filter(ttoyear(t)<=2100 & pimp==5),
-            aes(x=ttoyear(t),y=value-land_temp0,color=nsrm,linetype=pimp,group=file)) +
-  scale_color_manual(values=regpalette_srm)
+              inner_join(sanitized_names) %>%
+              mutate(Scenario=case_when(nsrm=="no SRM" & COOP=="coop" ~ "Optimal, no SAI",
+                                        nsrm=="Cooperative" & COOP=="coop" ~ "Optimal",
+                                        nsrm=="no SRM" & COOP=="noncoop" ~ "Free-riding",
+                                        .default=nsrm) ) %>%
+              filter(ttoyear(t)<=2100 & pimp==5 & nsrm!="no SRM" & COOP=="noncoop"),
+            aes(x=ttoyear(t),y=value-land_temp0,color=Scenario,group=file), linetype=2, linewidth=1) +
+  scale_color_manual(values=regpalette_srm,name="Scenario") +
+  xlab("") + ylab("Average land temperature increase [°C]")
 
+fig <- ggarrange(figa+theme(legend.position="none"),figb)
+ggsave("fig_TSnoncoop.png",plot=fig,width=18, height=9, units="cm")
 

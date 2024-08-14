@@ -24,7 +24,7 @@ gdploss_barplot <- gdploss %>%
   inner_join(perc_impact2 %>% select(-value)) %>%
   inner_join(countries_map) %>%
   group_by(n,source) %>%
-  mutate(valueerel=-(perc*value-perc[nsrm=="Cooperative" & COOP=="coop"]*value[nsrm=="Cooperative" & COOP=="coop"]) /(value[nsrm=="Cooperative" & COOP=="coop"]-value[nsrm=="no SRM" & COOP=="coop" & pimp=="5"])) %>%
+  mutate(valueerel=-(perc*value-perc[nsrm=="Cooperative" & COOP=="coop"]*value[nsrm=="Cooperative" & COOP=="coop"]) /(value[nsrm=="Cooperative" & COOP=="coop"]-value[nsrm=="no SRM" & COOP=="coop"])) %>%
   filter(!nsrm %in% c("no SRM","Cooperative") ) %>%
   ggplot() +
   geom_hline(yintercept=100) +
@@ -70,7 +70,7 @@ gdploss_barplot <- gdploss %>%
                      name="Source") +
   guides(fill="none") +
   theme_pubr() +
-  theme(text = element_text(size = 7)) +
+  theme(text = element_text(size = 24)) +
   scale_x_discrete(guide = ggh4x::guide_axis_nested(delim="."))
 
 
@@ -84,7 +84,7 @@ map <- countries_map %>%
   theme_void() + theme(legend.position="none")
 
 #cowplot::ggdraw(gdploss_barplot) + cowplot::draw_plot(plot=map,x=.7,y=.6,width=.3,height=.2) 
-
+n_to_name <- c("Brazil"="bra","India"="ind","China"="chn","USA"="usa")
 damages_maps <- gdploss %>% 
   inner_join(sanitized_names) %>%
   filter(ttoyear(t)==2100 & pimp==5) %>%
@@ -96,14 +96,19 @@ damages_maps <- gdploss %>%
   ungroup() %>% 
   mutate(disc=arules::discretize(valueerel,method="fixed",
                                  breaks=c(-10000000,0,100,1000000000),
-                                 labels=c("Unilateral implementation","Cooperative implementation","Mitigation"))) %>%
+                                 labels=c("Laissez-faire","Push to cooperation","Push to mitigation"))) %>%
   left_join(reg %>% filter(iso3!='ATA')) %>% 
   ggplot() +
-  geom_polygon(aes(x = long, y = lat,group = group, fill = disc),color='black',size=.1) +
-  scale_fill_manual(values=c("#4575B4","white","#a2231D"),name="Better-off with") +
-  #scale_fill_gradient2() +
+  geom_polygon(aes(x = long, y = lat,group = group, fill = disc,color=latitude),size=.2) +
+  geom_polygon(data= . %>% filter(n==n_to_name[nsrm]), 
+               aes(x = long, y = lat,group = group, fill = disc),color='red',size=.4) +
+  scale_fill_manual(values=c("#4575B4","white","#a2231D"),name="Preferred strategy") +
+  scale_color_viridis_d() +
   theme_void()+ 
-  theme(panel.background = element_rect(fill="white",color="white"),legend.position = "top") +
+  guides(color="none") +
+  theme(panel.background = element_rect(fill="white",color="white"),
+        legend.position = "top") +
+  theme(text = element_text(size = 24)) +
   facet_wrap(ordered(nsrm,c("Brazil","India","China","USA"))~.,nrow=1)
 
 fig_noncoop <- ggarrange(damages_maps,gdploss_barplot,heights=c(4,5),nrow=2)

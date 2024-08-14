@@ -1,5 +1,5 @@
 impacts_temp <- coef_T %>%
-  filter(file=="coop_maxiso3_SRMusa_INJfree_POLcba_IMPT10modified_IMPP10modified_TSPR1") %>%
+  filter(file=="coop_maxiso3_SRMusa_INJfree_POLcba_IMPT10modified_IMPP50modified_TSPR1") %>%
   cross_join(data.frame(temp=seq(0,+2,by=0.1))) %>%
   inner_join(coef %>% filter(V1=="alpha_temp") %>% rename(preind=value)) %>%
   group_by(n,file,temp) %>%
@@ -94,4 +94,4 @@ impacts_prec <- coef_P %>%
   theme_pubr() + xlab("Precipitation variation [std]") + ylab("% loss GDP/yr")
 
 impacts <- ggarrange(impacts_temp,impacts_prec,common.legend=TRUE)   
-ggsave("impacts.png",impacts,width=8.8,height=5)
+ggsave("impacts.png",impacts,width=18,height=9)

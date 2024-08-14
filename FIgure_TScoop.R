@@ -1,16 +1,7 @@
-TATM <- get_witch("TATM")
-land_temp_nogeong <- TATM %>% 
-  select(-n) %>%
-  inner_join(coef %>% 
-               filter(V1 %in% c("alpha_temp","beta_temp")) %>% 
-               pivot_wider(names_from=V1)) %>%
-  inner_join(area) %>%
-  group_by(file,t) %>%
-  summarise(value=weighted.mean(alpha_temp+beta_temp*value,area))
 
 figa <- Z_SRM %>% 
   inner_join(sanitized_names) %>%
-  filter(ttoyear(t)<=2100 & nsrm %in% c("Cooperative") & pimp %in% c(1,5) & !is.na(value)) %>%
+  filter(ttoyear(t)<=2100 & nsrm %in% c("Cooperative") & pimp %in% c(5) & !is.na(value)) %>%
   ggplot() +
   geom_area(aes(x=ttoyear(t),
                 y=value,
@@ -19,9 +10,9 @@ figa <- Z_SRM %>%
             color="black") +
   xlab("") + ylab("SAI [TgS/yr]") + 
   theme_pubr() + 
-  facet_wrap(pimp~.,nrow=2) +
+  #facet_wrap(pimp~.,nrow=2) +
   scale_fill_manual(name="Injection latitude",
-                    values=c("darkblue","#4a8dff","#CDDDFF","#FFFFFF","#ffbaba","#ff5252","#a70000"))
+                    values=c("darkblue","#4a8dff","#CDDDFF","grey","#ffbaba","#ff5252","#a70000"))
 
 figb <- land_temp %>%
   inner_join(main_scenarios_coop) %>%
@@ -38,10 +29,10 @@ figb <- land_temp %>%
             linetype=2,
             linewidth=1) +
   theme_pubr() + 
-  ylab("Temperature increase [°C]") +
+  ylab("Average land temperature increase [°C]") +
   xlab("")+
-  scale_color_manual(values=c("#72bcd4","#121B54","#00A36C"),
-                     labels=c("SAI, low prec","SAI, high prec","2°C"),
+  scale_color_manual(values=c("#121B54","#00A36C"),
+                     labels=c("Optimal","2°C"),
                      name="Scenario") 
 
 fig <- ggarrange(figa,figb)
