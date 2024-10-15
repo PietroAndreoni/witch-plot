@@ -6,7 +6,7 @@ wemi <- W_EMI %>%
                             nsrm=="Cooperative" & COOP=="coop" ~ "Optimal",
                             nsrm=="no SRM" & COOP=="noncoop" ~ "Free-riding",
                             .default=nsrm) ) %>%
-  filter(ttoyear(t)<=2100 & ghg=="co2" & pimp %in% c(5)) %>%
+  filter(ttoyear(t)<=2100 & ghg=="co2" & pimp %in% c(1)) %>%
   ggplot() +
   geom_line(aes(x=ttoyear(t),
                 y=value*3.66,

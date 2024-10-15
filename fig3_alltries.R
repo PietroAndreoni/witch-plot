@@ -120,10 +120,11 @@ v2 <- DAMFRAC %>%
 
 gdploss %>% 
   inner_join(sanitized_names) %>%
-  filter(ttoyear(t)==2100 & pimp==5) %>%
+  filter(ttoyear(t)==2100) %>%
   inner_join(countries_map) %>%
   group_by(n) %>%
-  mutate(valueerel=(value-value[nsrm=="Cooperative" & COOP=="coop"])/(value[nsrm=="Cooperative" & COOP=="coop"]-value[nsrm=="no SRM" & COOP=="coop"])) %>%
+  mutate(valueerel=(value-value[nsrm=="Cooperative" & COOP=="coop"])/(value[nsrm=="Cooperative" & COOP=="coop"]-value[nsrm=="no SRM" & COOP=="coop" & pimp=="5"])) %>%
+  filter(pimp==5) %>%
   inner_join(sanitized_names) %>% 
   mutate(Scenario=case_when(nsrm=="no SRM" & COOP=="coop" ~ "Optimal, no SAI",
                             nsrm=="Cooperative" & COOP=="coop" ~ "Optimal",
@@ -132,11 +133,11 @@ gdploss %>%
          pimp=ifelse(nsrm=="no SRM"," ",pimp)  ) %>%
   filter(!Scenario %in% c("Optimal, no SAI","Optimal","Free-riding") ) %>%
   ungroup() %>% 
-  mutate(disc=arules::discretize(-valueerel*100,method="fixed",breaks=c(-10000000,0,100,100000000),labels=c("Free-driving","Optimal SAI","2°C") )) %>%
+  mutate(disc=arules::discretize(-valueerel*100,method="fixed",breaks=c(-10000000,0,100000000),labels=c("Unilateral","Cooperation") )) %>%
   left_join(reg %>% filter(iso3!='ATA')) %>% 
   ggplot() +
   geom_polygon(aes(x = long, y = lat,group = group, fill = disc),color='black',size=.1) +
-  scale_fill_manual(name="Preferred scenario",values=c("#74ADD1","white","#F46D43")) +
+  scale_fill_manual(name="Preferred scenario",values=c("#F46D43","#74ADD1")) +
   theme_void()+ 
   theme(panel.background = element_rect(fill="white",color="white")) +
   facet_wrap(ordered(Scenario,c("USA","China","India","Brazil"))~.,)
@@ -148,22 +149,6 @@ abatefrac <- get_witch("ABATECOST") %>%
   mutate(value = value/ykali,source="ab") %>%
   filter(ttoyear(t)==2100) %>%
   select(file,n,value,source,t) 
-
-perc_impact2 <- IMPACT %>% 
-  filter(ttoyear(t) %in% c(2090,2095)) %>%
-  mutate(value=-value) %>%
-  pivot_wider(names_from=d) %>%
-  group_by(n,file) %>%
-  summarise(temp = sum(temp)/-abs((prec[ttoyear(t)==2095]+sum(temp))),
-            prec = prec[ttoyear(t)==2095]/-abs((prec[ttoyear(t)==2095]+sum(temp)) ) ) %>%
-  pivot_longer(c(temp,prec),names_to="source") %>%
-  inner_join(DAMFRAC %>% rename(dam=value) %>% filter(ttoyear(t)==2100) ) %>%
-  mutate(value=value*dam) %>% 
-  select(-dam,-pathdir) %>%  
-  bind_rows(abatefrac) %>%
-  group_by(file,n,t) %>%
-  mutate(perc=value/sum(value))
-
 
 perc_impact2 <- IMPACT %>% 
   filter(ttoyear(t) %in% c(2090,2095)) %>%
@@ -245,7 +230,7 @@ figb <- gdploss %>%
   inner_join(perc_impact2 %>% select(-value)) %>%
   inner_join(countries_map) %>%
   group_by(n,source) %>%
-  mutate(valueerel=-(perc*value-perc[nsrm=="Cooperative" & COOP=="coop"]*value[nsrm=="Cooperative" & COOP=="coop"]) /(value[nsrm=="Cooperative" & COOP=="coop"]-value[nsrm=="no SRM" & COOP=="coop"])) %>%
+  mutate(valueerel=-(perc*value-perc[nsrm=="Cooperative" & COOP=="coop"]*value[nsrm=="Cooperative" & COOP=="coop"]) /(value[nsrm=="Cooperative" & COOP=="coop"]-value[nsrm=="no SRM" & COOP=="coop" & pimp=="5"])) %>%
   filter(!nsrm %in% c("no SRM","Cooperative") ) %>%
   ggplot() +
   geom_hline(yintercept=100) +
@@ -283,13 +268,17 @@ figb <- gdploss %>%
                     y=med,
                     group=latitude), 
              size=2,color="black") +
-  coord_flip()+ 
+  coord_flip()+
+  facet_wrap(pimp~.,nrow=1,labeller=as_labeller(c("1"="Low precipitation impacts","5"="High precipitation impacts"))) +
   xlab("") + ylab("%")+
-  scale_shape_manual(values=c(21,22)) +
-  scale_color_manual(values=c("black","red")) +
+  scale_alpha_manual(labels=c("Mitigation","Precipitations","Temperature"),
+                     values=c(0.1,0.5,1),
+                     name="Source") +
+  guides(fill="none") +
   theme_pubr() +
   theme(text = element_text(size = 7)) +
   scale_x_discrete(guide = ggh4x::guide_axis_nested(delim="."))
+ggsave("Fig_noncoop.png",figb,width=8.8,height=5)
 
 ggarrange(figa,figb,heights=c(1,0.8),nrow=2)
 
@@ -303,3 +292,41 @@ map <- countries_map %>%
   theme_void()+ 
   theme(panel.background = element_rect(fill="white",color="white"))
 ggsave("map.png",map,width=8.8,heigh=7)
+
+DAMFRAC %>% 
+  inner_join(sanitized_names) %>%
+  filter(ttoyear(t)==2100 & pimp==5) %>%
+  inner_join(countries_map) %>%
+  group_by(n) %>%
+  mutate(valueerel=(value-value[nsrm=="Cooperative" & COOP=="coop"])/(value[nsrm=="Cooperative" & COOP=="coop"]-value[nsrm=="no SRM" & COOP=="coop"])) %>%
+  inner_join(sanitized_names) %>% 
+  mutate(Scenario=case_when(nsrm=="no SRM" & COOP=="coop" ~ "Optimal, no SAI",
+                            nsrm=="Cooperative" & COOP=="coop" ~ "Optimal",
+                            nsrm=="no SRM" & COOP=="noncoop" ~ "Free-riding",
+                            .default=nsrm),
+         pimp=ifelse(nsrm=="no SRM"," ",pimp)  ) %>%
+  filter(!Scenario %in% c("Optimal, no SAI","Optimal","Free-riding") ) %>%
+  ungroup() %>% 
+  mutate(disc=arules::discretize(-valueerel*100,method="fixed",breaks=c(-10000000,0,+100,100000000),labels=c("Better-off","In between","Worst-off") )) %>%
+  left_join(reg %>% filter(iso3!='ATA')) %>% 
+  ggplot() +
+  geom_polygon(aes(x = long, y = lat,group = group, fill = disc),color='black',size=.1) +
+  scale_fill_manual(values=c("#74ADD1","white","#F46D43")) +
+  #  scale_fill_gradient2() +
+  theme_void()+ 
+  theme(panel.background = element_rect(fill="white",color="white")) +
+  facet_wrap(Scenario~.,)
+
+
+gdploss_g %>% 
+  inner_join(sanitized_names) %>%
+  filter(ttoyear(t)<=2100 & pimp==5) %>% 
+  mutate(Scenario=case_when(nsrm=="no SRM" & COOP=="coop" ~ "Optimal, no SAI",
+                            nsrm=="Cooperative" & COOP=="coop" ~ "Optimal",
+                            nsrm=="no SRM" & COOP=="noncoop" ~ "Free-riding",
+                            .default=nsrm),
+         pimp=ifelse(nsrm=="no SRM"," ",pimp)  ) %>%
+  filter(!Scenario %in% c("Optimal","Free-riding") ) %>%
+  ggplot() +
+  geom_line(aes(x=ttoyear(t),y=valuerel,color=Scenario) ) +
+  scale_color_manual(values=regpalette_srm)  + theme_pubr()

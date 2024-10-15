@@ -1,5 +1,5 @@
 rm(list = ls())
-witch_folder = "../Results_srm/Allfree150724" #Where you're RICE/DICE/RICE50x code is located
+witch_folder = "../Results_srm/All151024" #Where you're RICE/DICE/RICE50x code is located
 #witch_folder = "../Results_srm/Allfree150724" #Where you're RICE/DICE/RICE50x code is located
 #main directory of your results files
 main_directory <- witch_folder # by default, the witch source folder
@@ -72,7 +72,11 @@ sanitize <- function(.x) {
           zinj = ifelse(zinj=="no","no SRM",zinj),
           spread = ifelse(is.na(spread),"1",spread),
           tend = ifelse(is.na(tend),"2200",tend) ) %>%
-    mutate(nsrm=ifelse(nsrm=="USA" & COOP=="coop", "Cooperative", nsrm) ) 
+    mutate(nsrm=ifelse(nsrm=="USA" & COOP=="coop", "Cooperative", nsrm) ) %>%
+    mutate(Scenario=case_when(nsrm=="no SRM" & COOP=="coop" ~ "2°C",
+                            nsrm=="Cooperative" & COOP=="coop" ~ "Cooperative",
+                            nsrm=="no SRM" & COOP=="noncoop" ~ "Free-riding",
+                            .default=nsrm) ) 
 }
 
 injton <- function(.x) {
@@ -90,6 +94,7 @@ IMPACT <- get_witch("IMPACT")
 DPRECIP_SRM <- get_witch("DPRECIP_REGION_SRM")
 DTEMP_SRM <- get_witch("DTEMP_REGION_SRM")
 TEMP <- get_witch("TEMP_REGION")
+PREC <- get_witch("PRECIP_REGION")
 DAMFRAC <- get_witch("DAMFRAC")
 DAMAGES <- get_witch("DAMAGES")
 TATM <- get_witch("TATM")
@@ -228,4 +233,17 @@ land_temp_nogeong <- TATM %>%
   group_by(file,t) %>%
   summarise(value=weighted.mean(alpha_temp+beta_temp*value,area))
 
-  
+sec_data <- gdx('../RICE50x/data_maxiso3/data_baseline.gdx')
+climate_regional_data <- gdx('../RICE50x/data_maxiso3/data_mod_climate_regional.gdx')
+srm_regional_data <- gdx('../RICE50x/data_maxiso3/data_mod_srm_regional.gdx')
+
+clim <- climate_regional_data["climate_region_coef_cmip5"]
+pop2 <- sec_data["ssp_l"] %>% filter(V1=="ssp2") %>% mutate(t=as.numeric(t)) %>% rename(pop2=value,ssp=V1)
+gdp <- sec_data["ssp_ykali"] %>% filter(V1=="ssp2") %>% mutate(t=as.numeric(t)) %>% rename(gdp=value,ssp=V1)
+sd_prec <- srm_regional_data["precipitation_hist"] %>%
+  pivot_wider(names_from="V2") %>%  
+  group_by(n) %>% 
+  summarise(sd=sd/mean) %>%
+  ungroup() %>%
+  mutate(sd=ifelse(is.na(sd),mean(sd,na.rm=TRUE),sd))
+base_prec <- clim %>% filter(V1=="base_precip") %>% mutate(prec0=value*12/1000) %>% select(-V1,-value)

@@ -1,27 +1,24 @@
+precipitation_sel <- 1
+
 abatefrac <- get_witch("ABATECOST") %>%
   inner_join(YGROSS %>% rename(ykali=value)) %>%
   mutate(value = value/ykali,source="ab") %>%
-  filter(ttoyear(t)==2100) %>%
   select(file,n,value,source,t) 
 
-perc_impact2 <- IMPACT %>% 
-  filter(ttoyear(t) %in% c(2090,2095)) %>%
-  mutate(value=-value) %>%
-  pivot_wider(names_from=d) %>%
-  group_by(n,file) %>%
-  summarise(temp = sum(temp),
-            prec = prec[ttoyear(t)==2095]) %>%
-  pivot_longer(c(temp,prec),names_to="source") %>%
-  mutate(t=18) %>%
+g0 <- get_witch("basegrowthcap")  %>% rename(g0=value)
+ 
+perc_impact <- get_witch("damfrac_type") %>%
+  rename(source=d) %>%
   bind_rows(abatefrac) %>%
+  filter(ttoyear(t)==2100) %>%
   group_by(file,n,t) %>%
-  mutate(perc=value/sum(value))
+  mutate(perc=value/sum(value)) %>% ungroup() %>% select(-pathdir)
 
 gdploss_barplot <- gdploss %>% 
   inner_join(sanitized_names) %>%
-  filter(ttoyear(t)==2100 & pimp==5) %>%
+  filter(ttoyear(t)==2100 & pimp==precipitation_sel) %>%
   inner_join(pop %>% rename(pop=value)) %>%
-  inner_join(perc_impact2 %>% select(-value)) %>%
+  inner_join(perc_impact %>% select(-value)) %>%
   inner_join(countries_map) %>%
   group_by(n,source) %>%
   mutate(valueerel=-(perc*value-perc[nsrm=="Cooperative" & COOP=="coop"]*value[nsrm=="Cooperative" & COOP=="coop"]) /(value[nsrm=="Cooperative" & COOP=="coop"]-value[nsrm=="no SRM" & COOP=="coop"])) %>%
@@ -87,11 +84,11 @@ map <- countries_map %>%
 n_to_name <- c("Brazil"="bra","India"="ind","China"="chn","USA"="usa")
 damages_maps <- gdploss %>% 
   inner_join(sanitized_names) %>%
-  filter(ttoyear(t)==2100 & pimp==5) %>%
+  filter(ttoyear(t)==2100 & pimp==precipitation_sel) %>%
   inner_join(pop %>% rename(pop=value)) %>%
   inner_join(countries_map) %>%
   group_by(n) %>%
-  mutate(valueerel=-100*(value-value[nsrm=="Cooperative" & COOP=="coop"]) /(value[nsrm=="Cooperative" & COOP=="coop"]-value[nsrm=="no SRM" & COOP=="coop" & pimp=="5"])) %>%
+  mutate(valueerel=-100*(value-value[nsrm=="Cooperative" & COOP=="coop"]) /(value[nsrm=="Cooperative" & COOP=="coop"]-value[nsrm=="no SRM" & COOP=="coop"])) %>%
   filter(!nsrm %in% c("no SRM","Cooperative") ) %>%
   ungroup() %>% 
   mutate(disc=arules::discretize(valueerel,method="fixed",
@@ -111,5 +108,37 @@ damages_maps <- gdploss %>%
   theme(text = element_text(size = 24)) +
   facet_wrap(ordered(nsrm,c("Brazil","India","China","USA"))~.,nrow=1)
 
-fig_noncoop <- ggarrange(damages_maps,gdploss_barplot,heights=c(4,5),nrow=2)
+percentages <- gdploss %>% 
+  inner_join(sanitized_names) %>%
+  filter(ttoyear(t)==2100 & pimp==precipitation_sel) %>%
+  inner_join(pop %>% rename(pop=value)) %>%
+  inner_join(ykali %>% rename(y0=value)) %>%
+  inner_join(countries_map) %>%
+  group_by(n) %>%
+  mutate(valueerel=-100*(value-value[nsrm=="Cooperative" & COOP=="coop"]) /(value[nsrm=="Cooperative" & COOP=="coop"]-value[nsrm=="no SRM" & COOP=="coop"])) %>%
+  filter(!nsrm %in% c("no SRM","Cooperative") ) %>%
+  ungroup() %>% 
+  mutate(disc=arules::discretize(valueerel,method="fixed",
+                                 breaks=c(-10000000,0,100,1000000000),
+                                 labels=c("Laissez-faire","Push to cooperation","Push to mitigation")),
+         ypc=y0/pop) %>%
+  group_by(file,disc) %>%
+  summarise(pop=sum(pop),y=sum(y0)) %>%
+  group_by(file) %>%
+  mutate(pop=pop/sum(pop), y = y/sum(y)) %>%
+  pivot_longer(c(pop,y)) %>%
+  filter(name=="pop") %>%
+  inner_join(sanitized_names)%>%
+  ggplot() +
+  geom_bar(aes(x=name, y=value, fill=disc), color="black",stat="identity",position="stack") +
+  facet_wrap(ordered(nsrm,c("Brazil","India","China","USA"))~.,nrow=1) + 
+  coord_flip() +
+  scale_fill_manual(values=c("#4575B4","white","#a2231D"),name="Preferred strategy") +
+  theme_void() +
+  theme(legend.position="none",strip.text=element_blank())
+
+fig_noncoop <- ggarrange(damages_maps,percentages,gdploss_barplot,heights=c(4,0.3,5),nrow=3)
 ggsave("Fig_noncoop.png",fig_noncoop,width=18,height=14)
+
+
+

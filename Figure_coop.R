@@ -1,5 +1,5 @@
 main_scenarios_coop <- sanitized_names %>% 
-  filter(COOP=="coop" & spread==1 & tend==2200 & ptype=="modified" & ttype=="modified" & pimp %in% c(5))
+  filter(COOP=="coop" & spread==1 & tend==2200 & ptype=="original" & ttype=="modified" & pimp %in% c(1))
 
 coop_palette <- c("Optimal, no SAI"="#00A36C",
                   "0.2"="#e8f4f8",
@@ -7,6 +7,24 @@ coop_palette <- c("Optimal, no SAI"="#00A36C",
                   "1"="#72bcd4",
                   "2"="#0000FF",
                   "5"="#121B54")
+
+srm2100 <- Z_SRM %>%
+  inner_join(main_scenarios_coop) %>%
+  filter(ttoyear(t)==2100 & 
+           !pimp %in% c("no SRM") & 
+           !inj %in% c("60N","60S")) %>% 
+  mutate(inj=ifelse(str_detect(inj,"S"), -as.numeric(str_remove(inj,"S")),as.numeric(str_remove(inj,"N")))) %>%
+  ggplot() +
+  geom_bar(aes(x=as.factor(inj),
+               y=value,
+               fill=pimp),
+           position="dodge",stat="identity",color="black") +
+  scale_fill_manual(values=coop_palette,
+                    name="Precipitation impacts") +
+  xlab("") + ylab("SAI [TGS/yr]") +
+  theme_pubr() +
+  theme(legend.position = "none",
+        text=element_text(size=7))
 
 regtemp2100 <- TEMP %>% 
   rename(temp=value) %>%
@@ -23,15 +41,6 @@ regtemp2100 <- TEMP %>%
                summarise(pop=mean(value)) ) %>%
   mutate(Scenario=ifelse(nsrm=="no SRM","Optimal, no SAI",pimp)) %>%
   ggplot() +
-  # geom_bar(data=Z_SRM %>%
-  #            inner_join(main_scenarios_coop) %>%
-  #            filter(ttoyear(t)==2100 & 
-  #                     !pimp %in% c("no SRM") & 
-  #                     !inj %in% c("60N","60S")) %>% 
-  #            mutate(inj=ifelse(str_detect(inj,"S"), -as.numeric(str_remove(inj,"S")),as.numeric(str_remove(inj,"N")))),
-  #          aes(x=inj,
-  #              y=value/sum(value)*2),
-  #          position="dodge",stat="identity",color="black",fill="#121B54",alpha=0.5,width=5) +
   geom_point(aes(x=meanlat,
         y=temp,
         color=Scenario),
@@ -65,7 +74,7 @@ regtemp2100 <- TEMP %>%
   theme(legend.position="bottom") +
   scale_color_manual(values=coop_palette,
                      name="Precipitation impacts",
-                     labels=c("SAI","2°C")) +
+                     labels=c("Mitigation + SAI","Mitigation")) +
   xlab("") + ylab("Local temperature increase to preindustrial [°C]") + 
   theme_pubr() + theme(legend.position = "none",
                        text=element_text(size=12))
@@ -81,15 +90,6 @@ precip2100 <- PREC %>% rename(prec=value) %>%
   inner_join(sd_prec) %>%
   mutate(Scenario=ifelse(nsrm=="no SRM","Optimal, no SAI",pimp)) %>%
   ggplot() +
-  # geom_bar(data=Z_SRM %>%
-  #            inner_join(main_scenarios_coop) %>%
-  #            filter(ttoyear(t)==2100 & 
-  #                     !pimp %in% c("no SRM") & 
-  #                     !inj %in% c("60N","60S")) %>% 
-  #            mutate(inj=ifelse(str_detect(inj,"S"), -as.numeric(str_remove(inj,"S")),as.numeric(str_remove(inj,"N")))),
-  #          aes(x=inj,
-  #              y=value/sum(value)),
-  #          position="dodge",stat="identity",color="black",fill="#121B54",alpha=0.5,width=5) +
   geom_hline(yintercept=0) +
   geom_ribbon(data=data.frame(lats=c(-50,75)),
               aes(x=lats,
@@ -116,7 +116,7 @@ precip2100 <- PREC %>% rename(prec=value) %>%
   theme(legend.position="bottom") +
   scale_color_manual(values=coop_palette,
                      name="Precipitation impacts",
-                     labels=c("SAI","2°C")) +
+                     labels=c("Mitigation + SAI","Mitigation")) +
   xlab("") + ylab("Precipitation variation [STD]") + 
   theme_pubr() + theme(legend.position = "none",
                        text=element_text(size=12))
@@ -149,10 +149,10 @@ damages2100 <- gdploss %>%
   theme_pubr() + 
   scale_color_manual(values=coop_palette,
                      name="Scenario",
-                     labels=c("Optimal SAI","2°C")) +
+                     labels=c("Mitigation + SAI","Mitigation")) +
   scale_fill_manual(values=coop_palette,
                     name="Scenario",
-                    labels=c("SAI","2°C")) +
+                    labels=c("Mitigation + SAI","Mitigation")) +
   guides(shape="none") +
   xlab("Average country latitude") + 
   ylab("GDP loss [%]") + theme(legend.position = "right",
