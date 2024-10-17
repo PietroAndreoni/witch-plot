@@ -1,5 +1,5 @@
 rm(list = ls())
-witch_folder = "../Results_srm/All151024" #Where you're RICE/DICE/RICE50x code is located
+witch_folder = "../Results_srm/All161024/Impacts_typ" #Where you're RICE/DICE/RICE50x code is located
 #witch_folder = "../Results_srm/Allfree150724" #Where you're RICE/DICE/RICE50x code is located
 #main directory of your results files
 main_directory <- witch_folder # by default, the witch source folder
@@ -43,10 +43,8 @@ sanitize <- function(.x) {
   POL=str_extract(file,"(?<=POL).+?(?=_)"),
   nsrm=str_extract(file,"(?<=SRM).+?(?=_)"),
   zinj=str_extract(file,"(?<=INJ).+?(?=_)"),
-  timp=str_extract(file,"(?<=IMPT).+?(?=[a-z])"),
-  ttype=str_extract(file,"(?<=IMPT[0-9][0-9]).+?(?=_)"),
-  pimp=str_extract(file,"(?<=IMPP).+?(?=[a-z])"),
-  ptype=str_extract(file,"(?<=IMPP[0-9][0-9]).+?(?=_)"),
+  ttype=str_extract(file,"(?<=IMPT).+?(?=_)"),
+  ptype=str_extract(file,"(?<=IMPP).+?(?=_)"),
   tend=str_extract(file,"(?<=GE).*"),
   spread=str_extract(file,"(?<=TSPR).*")) %>%
   mutate( nsrm=case_when(nsrm=="brics"~"BRICS",
@@ -65,16 +63,16 @@ sanitize <- function(.x) {
                    nsrm=="aus"~"Australia",
                    .default = "no SRM" ),
           POL = ifelse(is.na(POL),"cba",POL),
-          timp = ifelse(is.na(timp),"1",as.character(as.numeric(timp)/10)),
-          pimp = ifelse(is.na(pimp),"5",as.character(as.numeric(pimp)/10)),
-          ptype = ifelse(is.na(ptype),"modified",ptype),
-          ttype = ifelse(is.na(ttype),"modified",ttype),
+          timp = as.character(as.numeric(str_replace_all(ttype,"[^0-9.-]",""))/10),
+          pimp = as.character(as.numeric(str_replace_all(ptype,"[^0-9.-]",""))/10),
+          ptype = str_replace_all(ptype,"[0-9.-]",""),
+          ttype = str_replace_all(ttype,"[0-9.-]",""),
           zinj = ifelse(zinj=="no","no SRM",zinj),
-          spread = ifelse(is.na(spread),"1",spread),
+          spread = ifelse(is.na(spread),"1",as.character(as.numeric(spread)/10)),
           tend = ifelse(is.na(tend),"2200",tend) ) %>%
     mutate(nsrm=ifelse(nsrm=="USA" & COOP=="coop", "Cooperative", nsrm) ) %>%
-    mutate(Scenario=case_when(nsrm=="no SRM" & COOP=="coop" ~ "2°C",
-                            nsrm=="Cooperative" & COOP=="coop" ~ "Cooperative",
+    mutate(Scenario=case_when(nsrm=="no SRM" & COOP=="coop" ~ "Mitigation",
+                            nsrm=="Cooperative" & COOP=="coop" ~ "Mitigation + SAI",
                             nsrm=="no SRM" & COOP=="noncoop" ~ "Free-riding",
                             .default=nsrm) ) 
 }
@@ -195,7 +193,7 @@ gdploss <- Y %>%
   full_join(YGROSS %>% rename(ykali=value)) %>%
   mutate(value=(ykali-value)/ykali )  %>%
   inner_join(sanitized_names) %>%
-  group_by(t,n,pimp) %>%
+  group_by(t,n,pimp,spread,ptype) %>%
   mutate(valuerel=(value-value[nsrm=="Cooperative" & COOP=="coop"])*100 )
 
 gdploss_g <- Y %>%
@@ -203,7 +201,7 @@ gdploss_g <- Y %>%
   group_by(file,t) %>%
   summarise(value=sum(ykali-value)/sum(ykali) )  %>%
   inner_join(sanitized_names) %>%
-  group_by(t,pimp) %>%
+  group_by(t,pimp,spread,ptype) %>%
   mutate(valuerel=(value-value[nsrm=="Cooperative" & COOP=="coop"])*100 ) 
 
 damfrac_g <- DAMAGES %>%
@@ -215,7 +213,7 @@ brackets <- damfrac_type %>%
   pivot_longer(c(ab,temp,prec),names_to="type") %>%
   inner_join(sanitized_names) %>%
   filter(ttoyear(t) == 2100) %>%
-  group_by(n,type,pimp) %>%
+  group_by(n,type,pimp,spread,ptype) %>%
   mutate(value=(value-value[nsrm=="Cooperative" & COOP=="coop"])*100 ) %>%
   filter(!(nsrm=="Cooperative" & COOP=="coop")) %>%
   ungroup() %>%

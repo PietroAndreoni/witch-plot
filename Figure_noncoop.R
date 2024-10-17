@@ -1,4 +1,5 @@
-precipitation_sel <- 1
+precipitation_sel <- 0.2
+tspread_sel <- 1
 
 abatefrac <- get_witch("ABATECOST") %>%
   inner_join(YGROSS %>% rename(ykali=value)) %>%
@@ -16,7 +17,7 @@ perc_impact <- get_witch("damfrac_type") %>%
 
 gdploss_barplot <- gdploss %>% 
   inner_join(sanitized_names) %>%
-  filter(ttoyear(t)==2100 & pimp==precipitation_sel) %>%
+  filter(ttoyear(t)==2100 & pimp==precipitation_sel & spread==tspread_sel) %>%
   inner_join(pop %>% rename(pop=value)) %>%
   inner_join(perc_impact %>% select(-value)) %>%
   inner_join(countries_map) %>%
@@ -84,7 +85,7 @@ map <- countries_map %>%
 n_to_name <- c("Brazil"="bra","India"="ind","China"="chn","USA"="usa")
 damages_maps <- gdploss %>% 
   inner_join(sanitized_names) %>%
-  filter(ttoyear(t)==2100 & pimp==precipitation_sel) %>%
+  filter(ttoyear(t)==2100 & pimp==precipitation_sel & spread==tspread_sel) %>%
   inner_join(pop %>% rename(pop=value)) %>%
   inner_join(countries_map) %>%
   group_by(n) %>%
@@ -110,7 +111,7 @@ damages_maps <- gdploss %>%
 
 percentages <- gdploss %>% 
   inner_join(sanitized_names) %>%
-  filter(ttoyear(t)==2100 & pimp==precipitation_sel) %>%
+  filter(ttoyear(t)==2100 & pimp==precipitation_sel & spread==tspread_sel) %>%
   inner_join(pop %>% rename(pop=value)) %>%
   inner_join(ykali %>% rename(y0=value)) %>%
   inner_join(countries_map) %>%

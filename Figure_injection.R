@@ -57,7 +57,7 @@ reaction_p_srm <- cross_join(clim %>%
 
 f1b <- ggplot(prec %>% inner_join(sd_prec) %>%
          filter(inj_lat %in% c(-30,0,30)) %>% 
-         inner_join(unique(inner_join(reaction_p_srm,temp %>% select(n,meanlat)))) ) +
+         inner_join(unique(inner_join(reaction_p_srm,prec %>% select(n,meanlat)))) ) +
   geom_hline(yintercept=0,color="grey",linewidth=1) +
   geom_ribbon(aes(x=meanlat,
               ymin=-1,
@@ -95,5 +95,27 @@ f1b <- ggplot(prec %>% inner_join(sd_prec) %>%
   scale_color_viridis_d(name = "Injection latitude") + xlab("Average country latitude") + ylab("Variation of average daily precipitation [standard deviations]")
 
 f1 <- ggarrange(f1a,f1b,nrow=1,common.legend = TRUE,labels=c("a","b"))
-ggsave("figure1.png",plot=f1,dpi=320,width=18,height=9,units="cm")
+ggsave("Injection.png",plot=f1,dpi=320,width=18,height=9,units="cm")
 
+
+inj_prec <- ggplot(prec %>% 
+                     group_by(n,inj) %>%
+                     filter(row_number()==1) %>%
+         select(n,inj,value) %>%
+         inner_join(sd_prec) %>%
+         left_join(reg %>% filter(iso3!='ATA')) ) +
+         geom_polygon(aes(x = long, y = lat,group = group, fill = value/sd),size=.1,color="black") +
+  facet_wrap(ordered(inj,c("60N","45N","30N","15N","0","15S","30S","45S","60S"))~.,) + 
+  scale_fill_gradient2(name="Precipitation variation [SD]")
+ggsave("SI_injprec.png",plot=inj_prec,dpi=320,width=18,height=18,units="cm")
+
+
+inj_temp <- ggplot(temp %>% 
+                     group_by(n,inj) %>%
+                     filter(row_number()==1) %>%
+         select(n,inj,value) %>%
+         left_join(reg %>% filter(iso3!='ATA')) ) +
+  geom_polygon(aes(x = long, y = lat,group = group, fill = value),size=.1,color="black") +
+  facet_wrap(ordered(inj,c("60N","45N","30N","15N","0","15S","30S","45S","60S"))~.,) + 
+  scale_fill_gradient2(name="Temperature variation °C")
+ggsave("SI_injtemp.png",plot=inj_temp,dpi=320,width=18,height=18,units="cm")

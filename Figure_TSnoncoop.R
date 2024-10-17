@@ -1,6 +1,9 @@
+precipitation_sel <- 0.2
+tspread_sel <- 1
+
 figa <- W_SRM %>%
   inner_join(sanitized_names) %>%
-  filter(ttoyear(t)<=2100 & pimp %in% c(1) & nsrm != "no SRM") %>%
+  filter(ttoyear(t)<=2100 & pimp==precipitation_sel & spread==tspread_sel & nsrm != "no SRM") %>%
   ggplot() +
   geom_line(aes(x=ttoyear(t),
                 y=value,
@@ -24,7 +27,7 @@ figa <- W_SRM %>%
 
 figb <- land_temp %>%
   inner_join(sanitized_names) %>%
-  filter(ttoyear(t)<=2100 & pimp==1) %>%
+  filter(ttoyear(t)<=2100 & pimp==precipitation_sel & spread==tspread_sel) %>%
   ggplot(aes(x=ttoyear(t),y=value-land_temp0,color=Scenario,group=file)) +
   geom_line(linewidth=1) +
   geom_line(data=land_temp_nogeong %>%

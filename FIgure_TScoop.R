@@ -1,7 +1,7 @@
 
 figa <- Z_SRM %>% 
-  inner_join(sanitized_names) %>%
-  filter(ttoyear(t)<=2100 & nsrm %in% c("Cooperative") & pimp %in% c(1) & !is.na(value) & !inj %in% c("60N","60S")) %>%
+  inner_join(main_scenarios_coop) %>%
+  filter(ttoyear(t)<=2100 & !is.na(value) & !inj %in% c("60N","60S")) %>%
   ggplot() +
   geom_area(aes(x=ttoyear(t),
                 y=value,

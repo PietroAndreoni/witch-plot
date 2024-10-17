@@ -1,4 +1,6 @@
 precipitation_sel <- 1
+tspread_sel <- 0.1
+
 n_to_name <- c("USA"="usa","India"="ind","China"="chn","Brazil"="bra")
 
 temperature_maps <- TEMP %>% 
@@ -7,7 +9,7 @@ temperature_maps <- TEMP %>%
   inner_join(optimal_temperature) %>%
   group_by(n) %>%
   mutate(temp=temp-opttemp) %>%
-  filter(ttoyear(t)==2100 & pimp==precipitation_sel & !Scenario %in% c("Free-riding","2°C") ) %>% 
+  filter(ttoyear(t)==2100 & pimp==precipitation_sel & spread==tspread_sel & !Scenario %in% c("Free-riding","Mititgation") ) %>% 
   inner_join(countries_map) %>% 
   ungroup() %>% 
   mutate(disc=arules::discretize(temp,method="fixed",
@@ -34,7 +36,7 @@ temperature_maps <- TEMP %>%
 
 precipitation_maps <- PREC %>% rename(prec=value) %>% 
   inner_join(sanitized_names) %>%
-  filter(ttoyear(t)==2100 & pimp==precipitation_sel & !Scenario %in% c("Free-riding","2°C")) %>%
+  filter(ttoyear(t)==2100 & pimp==precipitation_sel & spread==tspread_sel & !Scenario %in% c("Free-riding","Mititgation")) %>%
   inner_join(countries_map) %>% 
   inner_join(sd_prec) %>%
   ungroup() %>% 
