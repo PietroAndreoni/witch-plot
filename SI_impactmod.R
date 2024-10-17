@@ -1,42 +1,50 @@
-sens_spread_coop <- sanitized_names %>% 
+sens_prec_coop <- sanitized_names %>% 
   filter(COOP=="coop" & tend==2200 & nsrm!="no SRM") 
 
-coop_palette <- c("0.1"="#72bcd4",
+coop_palette <- c("0.2"="#72bcd4",
+                  "0.5"="#72bc33",
                   "1"="#0000FF",
                   "2"="#121B54")
 
-impacts_temp <- coef_T %>%
-  inner_join(sens_spread_coop) %>%
-  filter(pimp==1 & nsrm=="Cooperative") %>%
-  cross_join(data.frame(temp=seq(-2,+3,by=0.1))) %>%
-  inner_join(coef %>% filter(V1=="alpha_temp") %>% rename(preind=value)) %>%
-  group_by(n,file,temp) %>%
-  summarise(value=value[Coefficient=="a"]+value[Coefficient=="b"]*(temp+preind)+value[Coefficient=="c"]*(temp+preind)^2,
-            preind=preind) %>%
-  inner_join(optimal_temperature) %>%
+modulate_prec <- get_witch("modulate_damages") %>% 
+  filter(d=="prec") %>% 
+  select(-d) %>% 
+  rename(modprec=value) %>%
+  inner_join(sens_spread_coop)
+
+impacts_prec <- coef_P %>%
+  group_by(n,file,value,Coefficient) %>%
+  cross_join(data.frame(prec=seq(-3,+3,by=0.1))) %>%
+  ungroup() %>% 
+  inner_join(coef %>% filter(V1=="base_precip") %>% mutate(baseprec=value*12*1e-3) %>% select(-V1,-value)) %>%  
+  inner_join(sd_prec) %>%
+  inner_join(modulate_prec) %>%
+  group_by(n,prec,pimp) %>%
+  summarise(value=modprec*(value[Coefficient=="a"]+value[Coefficient=="b"]*(baseprec+baseprec*prec*sd)+value[Coefficient=="c"]*((baseprec+baseprec*prec*sd))^2)) %>%
   inner_join(countries_map) %>%
-  group_by(temp,latitude,file) %>%
+  group_by(prec,latitude,pimp) %>%
   summarise(max=quantile(value,0.66),
             min=quantile(value,0.33),
-            med=median(value),
-            maxopt=quantile(opttemp-preind,0.66),
-            minopt=quantile(opttemp-preind,0.33),
-            medopt=median(opttemp-preind) ) %>% 
+            med=median(value)) %>%
   unique() %>%
-  inner_join(sanitized_names) %>%
+  inner_join(sens_spread_coop) %>%
+  inner_join(coef %>% filter(V1=="alpha_precip") %>% rename(preind=value)) %>%
   ggplot() +
-  geom_line(aes(x=temp,
+  geom_line(aes(x=prec,
                 y=med*100,
-                color=latitude),
+                color=latitude,
+                linetype=pimp),
             linewidth=1) +
-  geom_ribbon(aes(x=temp,
+  geom_ribbon(aes(x=prec,
                   ymin=min*100,
                   ymax=max*100,
-                  fill=latitude),
+                  fill=latitude,
+                  group=interaction(latitude,file) ),
               alpha=0.2) +
-  geom_vline(aes(xintercept=medopt,color=latitude)) +
-  theme_pubr() + ylab("% loss GDP/yr") + xlab("Global temperature increase") +
-  facet_wrap(spread~.,) +
+  scale_linetype_manual(values=c(2,3,1,4),
+                        name="Precipitation impacts",
+                        labels=c("x0.2","x0.5","Central","x2") ) + 
+  theme_pubr() + xlab("Precipitation variation [std]") + ylab("% loss GDP/yr") +
   theme(text=element_text(size=12))
 
 regtemp2100 <- TEMP %>% 
@@ -44,7 +52,7 @@ regtemp2100 <- TEMP %>%
   inner_join(coef %>% filter(V1=="alpha_temp") %>% rename(preind=value)) %>%
   group_by(file,n) %>%
   mutate(temp=temp-preind) %>%
-  inner_join(sens_spread_coop) %>%
+  inner_join(sens_prec_coop) %>%
   filter(ttoyear(t)==2100) %>% 
   inner_join(countries_map) %>% 
   inner_join(optimal_temperature) %>%
@@ -55,7 +63,7 @@ regtemp2100 <- TEMP %>%
   ggplot() +
   stat_smooth(aes(x=meanlat,
                   y=temp,
-                  color=spread,
+                  color=pimp,
                   weight=pop), 
               se = FALSE,
               linewidth=2) +
@@ -63,7 +71,7 @@ regtemp2100 <- TEMP %>%
               aes(x=meanlat,
                   y=opttemp-preind,
                   weight=pop, 
-                  color=spread),
+                  color=pimp),
               linetype=2,
               se = FALSE,
               linewidth=2) +
@@ -75,13 +83,13 @@ regtemp2100 <- TEMP %>%
              alpha=0.5) +
   scale_color_manual(values=coop_palette,
                      name="Temperature spread",
-                     labels=c("0.1°C","1°C","2°C")) +
+                     labels=c("x0.2","x0.5","x1","x2")) +
   xlab("") + ylab("Local temperature increase to preindustrial [°C]") + 
   theme_pubr() + theme(legend.position = "bottom",
                        text=element_text(size=12))
 
 precip2100 <- PREC %>% rename(prec=value) %>% 
-  inner_join(sens_spread_coop) %>%
+  inner_join(sens_prec_coop) %>%
   filter(ttoyear(t)==2100) %>%   
   inner_join(countries_map) %>% 
   inner_join(pop %>% 
@@ -100,11 +108,11 @@ precip2100 <- PREC %>% rename(prec=value) %>%
               alpha=0.2) +
   geom_point(aes(x=meanlat,
                  y=(prec-1)/sd,
-                 color=spread),
+                 color=pimp),
              alpha=0.2) + 
   stat_smooth(aes(x=meanlat,
                   y=(prec-1)/sd,
-                  color=spread,
+                  color=pimp,
                   weight=pop), 
               se = FALSE,
               linewidth=2 ) +
@@ -115,7 +123,7 @@ precip2100 <- PREC %>% rename(prec=value) %>%
              alpha=0.5) +
   scale_color_manual(values=coop_palette,
                      name="Temperature spread",
-                     labels=c("1°C","3°C","5°C")) +
+                     labels=c("x0.2","x0.5","x1","x2")) +
   xlab("") + ylab("Precipitation variation [STD]") + 
   theme_pubr() + theme(legend.position = "bottom",
                        text=element_text(size=12))
@@ -123,7 +131,7 @@ precip2100 <- PREC %>% rename(prec=value) %>%
 damages2100 <- gdploss %>%  
   filter(ttoyear(t)==2100 ) %>% 
   inner_join(pop %>% rename(pop=value) ) %>%
-  inner_join(sens_spread_coop) %>%
+  inner_join(sens_prec_coop) %>%
   inner_join(countries_map) %>%
   ggplot() + 
   geom_hline(yintercept=0) +
@@ -134,18 +142,18 @@ damages2100 <- gdploss %>%
              alpha=0.5) +
   geom_point( aes(x=meanlat,
                   y=value*100,
-                  color=spread),
+                  color=pimp),
               alpha=0.2) + 
   stat_smooth(data=.%>% filter(meanlat<=60),
               aes(x=meanlat,
                   y=value*100,
-                  color=spread,
+                  color=pimp,
                   weight=pop), 
               se = FALSE,
               linewidth=2) +
   scale_color_manual(values=coop_palette,
                      name="Temperature spread",
-                     labels=c("0.1°C","1°C","2°C")) +
+                     labels=c("x0.2","x0.5","x1","x2")) +
   theme_pubr() +   
   guides(shape="none") +
   xlab("Average country latitude") + 
@@ -164,13 +172,13 @@ scoop <- Z_SRM %>%
             color="black") +
   xlab("") + ylab("SAI [TgS/yr]") + 
   theme_pubr() + 
-  facet_grid(spread~.) +
+  facet_wrap(pimp~.) +
   scale_fill_manual(name="Injection latitude",
                     values=c("darkblue","#4a8dff","#CDDDFF","grey","#ffbaba","#ff5252","#a70000"))
 
 ##### 
 main_scenarios_noncoop <- sanitized_names %>% 
-filter(COOP=="noncoop" & tend==2200 & nsrm!="no SRM") 
+  filter(COOP=="noncoop" & tend==2200 & nsrm!="no SRM") 
 
 regtemp2100 <- TEMP %>% 
   rename(temp=value) %>%
@@ -188,7 +196,7 @@ regtemp2100 <- TEMP %>%
   ggplot() +
   stat_smooth(aes(x=meanlat,
                   y=temp,
-                  color=spread,
+                  color=pimp,
                   weight=pop), 
               se = FALSE,
               linewidth=2) +
@@ -196,7 +204,7 @@ regtemp2100 <- TEMP %>%
               aes(x=meanlat,
                   y=opttemp-preind,
                   weight=pop, 
-                  color=spread),
+                  color=pimp),
               linetype=2,
               se = FALSE,
               linewidth=2) +
@@ -208,7 +216,7 @@ regtemp2100 <- TEMP %>%
              alpha=0.5) +
   scale_color_manual(values=coop_palette,
                      name="Temperature spread",
-                     labels=c("0.1°C","1°C","2°C")) +
+                     labels=c("x0.2","x0.5","x1","x2")) +
   xlab("") + ylab("Local temperature increase to preindustrial [°C]") + 
   facet_grid(.~nsrm,) +
   theme_pubr() + theme(legend.position = "bottom",
@@ -234,11 +242,11 @@ precip2100 <- PREC %>% rename(prec=value) %>%
               alpha=0.2) +
   geom_point(aes(x=meanlat,
                  y=(prec-1)/sd,
-                 color=spread),
+                 color=pimp),
              alpha=0.2) + 
   stat_smooth(aes(x=meanlat,
                   y=(prec-1)/sd,
-                  color=spread,
+                  color=pimp,
                   weight=pop), 
               se = FALSE,
               linewidth=2 ) +
@@ -249,7 +257,7 @@ precip2100 <- PREC %>% rename(prec=value) %>%
              alpha=0.5) +
   scale_color_manual(values=coop_palette,
                      name="Temperature spread",
-                     labels=c("0.1°C","1°C","2°C")) +
+                     labels=c("x0.2","x0.5","x1","x2")) +
   xlab("") + ylab("Precipitation variation [STD]") + 
   facet_grid(.~nsrm,) + 
   theme_pubr() + theme(legend.position = "bottom",
@@ -269,18 +277,18 @@ damages2100 <- gdploss %>%
              alpha=0.5) +
   geom_point( aes(x=meanlat,
                   y=value*100,
-                  color=spread),
+                  color=pimp),
               alpha=0.2) + 
   stat_smooth(data=.%>% filter(meanlat<=60),
               aes(x=meanlat,
                   y=value*100,
-                  color=spread,
+                  color=pimp,
                   weight=pop), 
               se = FALSE,
               linewidth=2) +
   scale_color_manual(values=coop_palette,
                      name="Temperature spread",
-                     labels=c("0.1°C","1°C","2°C")) +
+                     labels=c("x0.2","x0.5","x1","x2")) +
   theme_pubr() +   
   facet_grid(.~nsrm,) +
   guides(shape="none") +
@@ -300,6 +308,6 @@ snoncoop <- Z_SRM %>%
             color="black") +
   xlab("") + ylab("SAI [TgS/yr]") + 
   theme_pubr() + 
-  facet_grid(spread~nsrm) +
+  facet_grid(pimp~nsrm) +
   scale_fill_manual(name="Injection latitude",
                     values=c("darkblue","#4a8dff","#CDDDFF","grey","#ffbaba","#ff5252","#a70000"))
