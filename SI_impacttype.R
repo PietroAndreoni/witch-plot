@@ -1,3 +1,6 @@
+#run first plotgdx_rice_main_scenarios with 
+# witch_folder = "../Results_srm/All161024/Impacts_typ" 
+
 sens_prect_coop <- sanitized_names %>% 
   filter(COOP=="coop" & tend==2200 & nsrm!="no SRM") %>%
   mutate(ptype=ifelse(ptype=="kotzorg","Original","Symmetric"))
@@ -42,6 +45,7 @@ impacts_prec <- coef_P %>%
   facet_wrap(ptype~.,) +
   theme_pubr() + xlab("Precipitation variation [std]") + ylab("% loss GDP/yr") +
   theme(text=element_text(size=12))
+ggsave("SI_imptype_impacts.png",plot=impacts_prec,width=9, height=5, units="cm")
 
 regtemp2100 <- TEMP %>% 
   rename(temp=value) %>%
@@ -160,6 +164,13 @@ damages2100 <- gdploss %>%
                                text=element_text(size=12))
 
 
+void <- ggplot() + theme_void() + theme(panel.background = element_rect(fill="white",color="white"))
+fig2_coops <- ggarrange(ggarrange(regtemp2100,precip2100,nrow=1,common.legend=TRUE),
+                        ggarrange(void,damages2100+theme(legend.position = "none"),void,nrow=1,widths=c(0.4,1,0.1)),
+                        nrow=2,heights=c(1,1))
+ggsave("SI_imptype_coop.png",plot=fig2_coops,width=18, height=16, units="cm")
+
+
 scoop <- Z_SRM %>% 
   inner_join(sens_prect_coop) %>%
   filter(ttoyear(t)<=2100  & !is.na(value) & !inj %in% c("60N","60S") ) %>%
@@ -174,6 +185,7 @@ scoop <- Z_SRM %>%
   facet_wrap(ptype~.) +
   scale_fill_manual(name="Injection latitude",
                     values=c("darkblue","#4a8dff","#CDDDFF","grey","#ffbaba","#ff5252","#a70000"))
+ggsave("SI_imptype_strategycoop.png",plot=scoop,width=9, height=5, units="cm")
 
 ##### 
 main_scenarios_noncoop <- sanitized_names %>% 
@@ -265,6 +277,7 @@ precip2100 <- PREC %>% rename(prec=value) %>%
 damages2100 <- gdploss %>%  
   filter(ttoyear(t)==2100 ) %>% 
   inner_join(pop %>% rename(pop=value) ) %>%
+  ungroup() %>% select(-ptype) %>%
   inner_join(main_scenarios_noncoop) %>%
   inner_join(countries_map) %>%
   ggplot() + 
@@ -295,6 +308,11 @@ damages2100 <- gdploss %>%
   ylab("GDP loss [%]") + theme(legend.position = "bottom",
                                text=element_text(size=12))
 
+void <- ggplot() + theme_void() + theme(panel.background = element_rect(fill="white",color="white"))
+fig2_noncoops <- ggarrange(ggarrange(regtemp2100,precip2100,nrow=1,common.legend=TRUE),
+                        ggarrange(void,damages2100+theme(legend.position = "none"),void,nrow=1,widths=c(0.4,1,0.1)),
+                        nrow=2,heights=c(1,1))
+ggsave("SI_imptype_noncoop.png",plot=fig2_noncoops,width=18, height=16, units="cm")
 
 snoncoop <- Z_SRM %>% 
   inner_join(main_scenarios_noncoop) %>%
@@ -310,3 +328,4 @@ snoncoop <- Z_SRM %>%
   facet_grid(ptype~nsrm) +
   scale_fill_manual(name="Injection latitude",
                     values=c("darkblue","#4a8dff","#CDDDFF","grey","#ffbaba","#ff5252","#a70000"))
+ggsave("SI_imptype_strategynoncoop.png",plot=snoncoop,width=9, height=5, units="cm")

@@ -1,9 +1,9 @@
 sens_spread_coop <- sanitized_names %>% 
   filter(COOP=="coop" & tend==2200 & nsrm!="no SRM") 
 
-coop_palette <- c("0.1"="#72bcd4",
+coop_palette <- c("0.1"="#efbbff",
                   "1"="#0000FF",
-                  "2"="#121B54")
+                  "2"="#660066")
 
 impacts_temp <- coef_T %>%
   inner_join(sens_spread_coop) %>%
@@ -35,9 +35,10 @@ impacts_temp <- coef_T %>%
                   fill=latitude),
               alpha=0.2) +
   geom_vline(aes(xintercept=medopt,color=latitude)) +
-  theme_pubr() + ylab("% loss GDP/yr") + xlab("Global temperature increase") +
+  theme_pubr() + ylab("% loss GDP/yr") + xlab("Local temperature increase to preindustrial [°C]") +
   facet_wrap(spread~.,) +
   theme(text=element_text(size=12))
+ggsave("SI_spread_impacts.png",plot=impacts_temp,width=8.8, height=5, units="cm")
 
 regtemp2100 <- TEMP %>% 
   rename(temp=value) %>%
@@ -53,6 +54,9 @@ regtemp2100 <- TEMP %>%
                group_by(n,file) %>%
                summarise(pop=mean(value)) ) %>%
   ggplot() +
+  geom_point(aes(x=meanlat,
+                  y=temp,
+                  color=spread)) +
   stat_smooth(aes(x=meanlat,
                   y=temp,
                   color=spread,
@@ -152,6 +156,13 @@ damages2100 <- gdploss %>%
   ylab("GDP loss [%]") + theme(legend.position = "bottom",
                                text=element_text(size=12))
 
+void <- ggplot() + theme_void() + theme(panel.background = element_rect(fill="white",color="white"))
+fig2_coops <- ggarrange(ggarrange(regtemp2100,precip2100,nrow=1,common.legend=TRUE),
+                        ggarrange(void,damages2100+theme(legend.position = "none"),void,nrow=1,widths=c(0.4,1,0.1)),
+                        nrow=2,heights=c(1,1))
+ggsave("SI_spread_coop.png",plot=fig2_coops,width=18, height=16, units="cm")
+
+
 
 scoop <- Z_SRM %>% 
   inner_join(sens_spread_coop) %>%
@@ -167,6 +178,7 @@ scoop <- Z_SRM %>%
   facet_grid(spread~.) +
   scale_fill_manual(name="Injection latitude",
                     values=c("darkblue","#4a8dff","#CDDDFF","grey","#ffbaba","#ff5252","#a70000"))
+ggsave("SI_spread_strategycoop.png",plot=scoop,width=9, height=5, units="cm")
 
 ##### 
 main_scenarios_noncoop <- sanitized_names %>% 
@@ -186,6 +198,10 @@ regtemp2100 <- TEMP %>%
                group_by(n,file) %>%
                summarise(pop=mean(value)) ) %>%
   ggplot() +
+  geom_point(aes(x=meanlat,
+                  y=temp,
+                  color=spread,
+                  weight=pop))+ 
   stat_smooth(aes(x=meanlat,
                   y=temp,
                   color=spread,
@@ -288,6 +304,12 @@ damages2100 <- gdploss %>%
   ylab("GDP loss [%]") + theme(legend.position = "bottom",
                                text=element_text(size=12))
 
+void <- ggplot() + theme_void() + theme(panel.background = element_rect(fill="white",color="white"))
+fig2_noncoops <- ggarrange(ggarrange(regtemp2100,precip2100,nrow=1,common.legend=TRUE),
+                           ggarrange(void,damages2100+theme(legend.position = "none"),void,nrow=1,widths=c(0.4,1,0.1)),
+                           nrow=2,heights=c(1,1))
+ggsave("SI_spread_noncoop.png",plot=fig2_noncoops,width=18, height=16, units="cm")
+
 
 snoncoop <- Z_SRM %>% 
   inner_join(main_scenarios_noncoop) %>%
@@ -303,3 +325,4 @@ snoncoop <- Z_SRM %>%
   facet_grid(spread~nsrm) +
   scale_fill_manual(name="Injection latitude",
                     values=c("darkblue","#4a8dff","#CDDDFF","grey","#ffbaba","#ff5252","#a70000"))
+ggsave("SI_spread_strategynoncoop.png",plot=snoncoop,width=9, height=5, units="cm")

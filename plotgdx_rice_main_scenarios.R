@@ -1,5 +1,5 @@
 rm(list = ls())
-witch_folder = "../Results_srm/All161024/Impacts_typ" #Where you're RICE/DICE/RICE50x code is located
+witch_folder = "../Results_srm/All161024/Main" #Where you're RICE/DICE/RICE50x code is located
 #witch_folder = "../Results_srm/Allfree150724" #Where you're RICE/DICE/RICE50x code is located
 #main directory of your results files
 main_directory <- witch_folder # by default, the witch source folder

@@ -1,7 +1,9 @@
+main_scenarios_coop <- sanitized_names %>% 
+  filter(COOP=="coop" & pimp==1 & spread==1)
 
 figa <- Z_SRM %>% 
   inner_join(main_scenarios_coop) %>%
-  filter(ttoyear(t)<=2100 & !is.na(value) & !inj %in% c("60N","60S")) %>%
+  filter(ttoyear(t)<=2100 & !is.na(value) & Scenario!="Mitigation" & !inj %in% c("60N","60S")) %>%
   ggplot() +
   geom_area(aes(x=ttoyear(t),
                 y=value,
@@ -32,7 +34,7 @@ figb <- land_temp %>%
   ylab("Average land temperature increase [°C]") +
   xlab("")+
   scale_color_manual(values=c("#121B54","#00A36C"),
-                     labels=c("Optimal","2°C"),
+                     labels=c("Mitigation + SAI","Mitigation"),
                      name="Scenario") 
 
 fig <- ggarrange(figa,figb)
