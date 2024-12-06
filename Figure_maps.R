@@ -1,5 +1,5 @@
 precipitation_sel <- 1
-tspread_sel <- 0.1
+tspread_sel <- 1
 
 n_to_name <- c("USA"="usa","India"="ind","China"="chn","Brazil"="bra")
 
@@ -9,7 +9,7 @@ temperature_maps <- TEMP %>%
   inner_join(optimal_temperature) %>%
   group_by(n) %>%
   mutate(temp=temp-opttemp) %>%
-  filter(ttoyear(t)==2100 & pimp==precipitation_sel & spread==tspread_sel & !Scenario %in% c("Free-riding","Mititgation") ) %>% 
+  filter(ttoyear(t)==2100 & pimp==precipitation_sel & spread==tspread_sel & !Scenario %in% c("Free-riding","Mitigation") ) %>% 
   inner_join(countries_map) %>% 
   ungroup() %>% 
   mutate(disc=arules::discretize(temp,method="fixed",
@@ -20,6 +20,11 @@ temperature_maps <- TEMP %>%
   geom_polygon(aes(x = long, y = lat,group = group, fill = disc),color='black',size=.1) +
   geom_polygon(data= . %>% filter(n==n_to_name[nsrm]), 
                aes(x = long, y = lat,group = group, fill = disc),color='red',size=.4) +
+  geom_point(data=Z_SRM %>% 
+               inner_join(sanitized_names) %>%
+               mutate(ninj=ifelse(str_detect(inj,"S"),- as.numeric(str_remove(inj,"S")), as.numeric(str_remove(inj,"N") ))) %>%
+               filter(ttoyear(t)==2100 & pimp==precipitation_sel & spread==tspread_sel & !Scenario %in% c("Free-riding","Mitigation") & value != 0),
+             aes(x=-170, y = ninj, size= value ), shape=21, color="red", fill=NA ) +
   scale_fill_manual(values=c("Extreme overcooling"="#4575B4",
                              "Significant overcooling"="#74ADD1",
                              "Moderate overcooling"="lightblue",
@@ -30,13 +35,14 @@ temperature_maps <- TEMP %>%
                     name="Temperature") +
   #scale_fill_gradient2() +
   theme_void()+ 
+  guides(size = FALSE) +
   theme(panel.background = element_rect(fill="white",color="white"),legend.position = "top") +
-  facet_wrap(ordered(Scenario,c("2°C","Cooperative","Brazil","India","China","USA","Free-riding"))~.,nrow=1)
+  facet_wrap(ordered(Scenario,c("Mitigation + SAI","Brazil","India","China","USA"))~.,nrow=1)
 
 
 precipitation_maps <- PREC %>% rename(prec=value) %>% 
   inner_join(sanitized_names) %>%
-  filter(ttoyear(t)==2100 & pimp==precipitation_sel & spread==tspread_sel & !Scenario %in% c("Free-riding","Mititgation")) %>%
+  filter(ttoyear(t)==2100 & pimp==precipitation_sel & spread==tspread_sel & !Scenario %in% c("Free-riding","Mitigation")) %>%
   inner_join(countries_map) %>% 
   inner_join(sd_prec) %>%
   ungroup() %>% 
@@ -49,6 +55,11 @@ precipitation_maps <- PREC %>% rename(prec=value) %>%
   geom_polygon(data= . %>% filter(n==n_to_name[nsrm]), 
                aes(x = long, y = lat,group = group, fill = disc),color='red',size=.4) +
 #  geom_polygon(aes(x = long, y = lat,group = group, color = latitude),size=.1, fill=NA) +
+  geom_point(data=Z_SRM %>% 
+               inner_join(sanitized_names) %>%
+               mutate(ninj=ifelse(str_detect(inj,"S"),- as.numeric(str_remove(inj,"S")), as.numeric(str_remove(inj,"N") ))) %>%
+               filter(ttoyear(t)==2100 & pimp==precipitation_sel & spread==tspread_sel & !Scenario %in% c("Free-riding","Mitigation") & value != 0),
+             aes(x=-170, y = ninj, size= value ), shape=21, color="red", fill=NA ) +
   scale_fill_manual(values=c("Extreme decrease"="#800000",
                              "Significant decrease"="#D73027",
                              "Moderate decrease"="#FDAE61",
@@ -59,8 +70,9 @@ precipitation_maps <- PREC %>% rename(prec=value) %>%
                     name="Precipitation") +
   scale_color_viridis_d() +
   theme_void()+ 
+  guides(size = FALSE) +
   theme(panel.background = element_rect(fill="white",color="white"),legend.position = "top") +
-  facet_wrap(ordered(Scenario,c("2°C","Cooperative","Brazil","India","China","USA","Free-riding"))~.,nrow=1)
+  facet_wrap(ordered(Scenario,c("Mitigation + SAI","Brazil","India","China","USA"))~.,nrow=1)
 
-fig_maps <- ggarrange(temperature_maps,precipitation_maps, nrow=2)
+fig_maps <- ggarrange(temperature_maps,precipitation_maps, nrow=2, labels = c("a","b"))
 ggsave("fig_maps.png",plot=fig_maps,width=18, height=10, units="cm")

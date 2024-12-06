@@ -1,6 +1,5 @@
 #run first plotgdx_rice_main_scenarios with 
 # witch_folder = "../Results_srm/All161024/Impacts_mod" 
-
 sens_prec_coop <- sanitized_names %>% 
   filter(COOP=="coop" & tend==2200 & nsrm!="no SRM") 
 
@@ -38,18 +37,12 @@ impacts_prec <- coef_P %>%
                 color=latitude,
                 linetype=pimp),
             linewidth=1) +
-  geom_ribbon(aes(x=prec,
-                  ymin=min*100,
-                  ymax=max*100,
-                  fill=latitude,
-                  group=interaction(latitude,file) ),
-              alpha=0.2) +
   scale_linetype_manual(values=c(2,3,1,4),
                         name="Precipitation impacts",
                         labels=c("x0.2","x0.5","Central","x2") ) + 
-  theme_pubr() + xlab("Precipitation variation [std]") + ylab("% loss GDP/yr") +
-  theme(text=element_text(size=12))
-ggsave("SI_impmod_impacts.png",plot=impacts_prec,width=5, height=5, units="cm")
+  xlab("Precipitation variation [std]") + ylab("% loss GDP/yr") + 
+  theme(legend.box="vertical", legend.margin=margin())
+ggsave("SI_figures/impmod_impacts.png",plot=impacts_prec,width=8.8, height=8, units="cm")
 
 regtemp2100 <- TEMP %>% 
   rename(temp=value) %>%
@@ -65,6 +58,10 @@ regtemp2100 <- TEMP %>%
                group_by(n,file) %>%
                summarise(pop=mean(value)) ) %>%
   ggplot() +
+  geom_point(aes(x=meanlat,
+                  y=temp,
+                  color=pimp),
+             alpha=0.2) +
   stat_smooth(aes(x=meanlat,
                   y=temp,
                   color=pimp,
@@ -89,8 +86,7 @@ regtemp2100 <- TEMP %>%
                      name="Temperature spread",
                      labels=c("x0.2","x0.5","x1","x2")) +
   xlab("") + ylab("Local temperature increase to preindustrial [°C]") + 
-  theme_pubr() + theme(legend.position = "bottom",
-                       text=element_text(size=12))
+  theme(legend.position = "bottom")
 
 precip2100 <- PREC %>% rename(prec=value) %>% 
   inner_join(sens_prec_coop) %>%
@@ -125,12 +121,10 @@ precip2100 <- PREC %>% rename(prec=value) %>%
              linetype=2,
              color="grey",
              alpha=0.5) +
-  scale_color_manual(values=coop_palette,
-                     name="Temperature spread",
-                     labels=c("x0.2","x0.5","x1","x2")) +
-  xlab("") + ylab("Precipitation variation [STD]") + 
-  theme_pubr() + theme(legend.position = "bottom",
-                       text=element_text(size=12))
+  scale_linetype_manual(values=c(2,3,1,4),
+                        name="Precipitation impacts",
+                        labels=c("x0.2","x0.5","Central","x2") ) + 
+  xlab("") + ylab("Precipitation variation [STD]") +  theme(legend.position = "bottom")
 
 damages2100 <- gdploss %>%  
   filter(ttoyear(t)==2100 ) %>% 
@@ -155,20 +149,18 @@ damages2100 <- gdploss %>%
                   weight=pop), 
               se = FALSE,
               linewidth=2) +
-  scale_color_manual(values=coop_palette,
-                     name="Temperature spread",
-                     labels=c("x0.2","x0.5","x1","x2")) +
-  theme_pubr() +   
+  scale_linetype_manual(values=c(2,3,1,4),
+                        name="Precipitation impacts",
+                        labels=c("x0.2","x0.5","Central","x2") ) + 
   guides(shape="none") +
   xlab("Average country latitude") + 
-  ylab("GDP loss [%]") + theme(legend.position = "bottom",
-                               text=element_text(size=12))
+  ylab("GDP loss [%]") + theme(legend.position = "bottom")
 
 void <- ggplot() + theme_void() + theme(panel.background = element_rect(fill="white",color="white"))
 fig2_coops <- ggarrange(ggarrange(regtemp2100,precip2100,nrow=1,common.legend=TRUE),
-                        ggarrange(void,damages2100+theme(legend.position = "none"),void,nrow=1,widths=c(0.4,1,0.1)),
+                        ggarrange(void,damages2100+theme(legend.position = "none"),void,nrow=1,widths=c(0.3,1,0.3)),
                         nrow=2,heights=c(1,1))
-ggsave("SI_impmod_coop.png",plot=fig2_coops,width=18, height=16, units="cm")
+ggsave("SI_figures/impmod_coop.png",plot=fig2_coops,width=18, height=16, units="cm")
 
 
 scoop <- Z_SRM %>% 
@@ -181,11 +173,11 @@ scoop <- Z_SRM %>%
             linewidth=1,
             color="black") +
   xlab("") + ylab("SAI [TgS/yr]") + 
-  theme_pubr() + 
+    
   facet_wrap(pimp~.) +
   scale_fill_manual(name="Injection latitude",
                     values=c("darkblue","#4a8dff","#CDDDFF","grey","#ffbaba","#ff5252","#a70000"))
-ggsave("SI_impmod_strategycoop.png",plot=scoop,width=9, height=5, units="cm")
+ggsave("SI_figures/impmod_strategycoop.png",plot=scoop,width=8.8, height=8, units="cm")
 
 ##### 
 main_scenarios_noncoop <- sanitized_names %>% 
@@ -205,6 +197,10 @@ regtemp2100 <- TEMP %>%
                group_by(n,file) %>%
                summarise(pop=mean(value)) ) %>%
   ggplot() +
+  geom_point(aes(x=meanlat,
+                  y=temp,
+                  color=pimp),
+             alpha=0.2) +
   stat_smooth(aes(x=meanlat,
                   y=temp,
                   color=pimp,
@@ -225,13 +221,11 @@ regtemp2100 <- TEMP %>%
              linetype=2,
              color="grey",
              alpha=0.5) +
-  scale_color_manual(values=coop_palette,
-                     name="Temperature spread",
-                     labels=c("x0.2","x0.5","x1","x2")) +
+  scale_linetype_manual(values=c(2,3,1,4),
+                        name="Precipitation impacts",
+                        labels=c("x0.2","x0.5","Central","x2") ) + 
   xlab("") + ylab("Local temperature increase to preindustrial [°C]") + 
-  facet_grid(.~nsrm,) +
-  theme_pubr() + theme(legend.position = "bottom",
-                       text=element_text(size=12))
+  facet_grid(.~nsrm,) +  theme(legend.position = "bottom")
 
 precip2100 <- PREC %>% rename(prec=value) %>% 
   inner_join(main_scenarios_noncoop) %>%
@@ -270,9 +264,7 @@ precip2100 <- PREC %>% rename(prec=value) %>%
                      name="Temperature spread",
                      labels=c("x0.2","x0.5","x1","x2")) +
   xlab("") + ylab("Precipitation variation [STD]") + 
-  facet_grid(.~nsrm,) + 
-  theme_pubr() + theme(legend.position = "bottom",
-                       text=element_text(size=12))
+  facet_grid(.~nsrm,) + theme(legend.position = "bottom")
 
 damages2100 <- gdploss %>%  
   filter(ttoyear(t)==2100 ) %>% 
@@ -297,22 +289,20 @@ damages2100 <- gdploss %>%
                   weight=pop), 
               se = FALSE,
               linewidth=2) +
-  scale_color_manual(values=coop_palette,
-                     name="Temperature spread",
-                     labels=c("x0.2","x0.5","x1","x2")) +
-  theme_pubr() +   
+  scale_linetype_manual(values=c(2,3,1,4),
+                        name="Precipitation impacts",
+                        labels=c("x0.2","x0.5","Central","x2") ) + 
   facet_grid(.~nsrm,) +
   guides(shape="none") +
   xlab("Average country latitude") + 
-  ylab("GDP loss [%]") + theme(legend.position = "bottom",
-                               text=element_text(size=12))
+  ylab("GDP loss [%]") + theme(legend.position = "bottom")
 
 
 void <- ggplot() + theme_void() + theme(panel.background = element_rect(fill="white",color="white"))
 fig2_noncoops <- ggarrange(ggarrange(regtemp2100,precip2100,nrow=1,common.legend=TRUE),
-                        ggarrange(void,damages2100+theme(legend.position = "none"),void,nrow=1,widths=c(0.4,1,0.1)),
+                        ggarrange(void,damages2100+theme(legend.position = "none"),void,nrow=1,widths=c(0.2,1,0.2)),
                         nrow=2,heights=c(1,1))
-ggsave("SI_impmod_noncoop.png",plot=fig2_noncoops,width=18, height=16, units="cm")
+ggsave("SI_figures/impmod_noncoop.png",plot=fig2_noncoops,width=18, height=16, units="cm")
 
 snoncoop <- Z_SRM %>% 
   inner_join(main_scenarios_noncoop) %>%
@@ -324,8 +314,7 @@ snoncoop <- Z_SRM %>%
             linewidth=1,
             color="black") +
   xlab("") + ylab("SAI [TgS/yr]") + 
-  theme_pubr() + 
   facet_grid(pimp~nsrm) +
   scale_fill_manual(name="Injection latitude",
                     values=c("darkblue","#4a8dff","#CDDDFF","grey","#ffbaba","#ff5252","#a70000"))
-ggsave("SI_impmod_strategynoncoop.png",plot=snoncoop,width=9, height=5, units="cm")
+ggsave("SI_figures/impmod_strategynoncoop.png",plot=snoncoop,width=8.8, height=9, units="cm")

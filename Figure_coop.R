@@ -1,8 +1,8 @@
 main_scenarios_coop <- sanitized_names %>% 
   filter(COOP=="coop" & pimp==1 & spread==1)
 
-coop_palette <- c("Mitigation + SAI"="#00A36C",
-                  "1"="#0000FF")
+coop_palette <- c("Mitigation + SAI"="#121B54",
+                  "Mitigation"="#00A36C")
 
 srm2100 <- Z_SRM %>%
   inner_join(main_scenarios_coop) %>%
@@ -35,7 +35,6 @@ regtemp2100 <- TEMP %>%
                filter(ttoyear(t)==2100) %>% 
                group_by(n,file) %>%
                summarise(pop=mean(value)) ) %>%
-  mutate(Scenario=ifelse(nsrm=="no SRM","Optimal, no SAI",pimp)) %>%
   ggplot() +
   geom_point(aes(x=meanlat,
         y=temp,
@@ -68,10 +67,8 @@ regtemp2100 <- TEMP %>%
              color="grey",
              alpha=0.5) +
   theme(legend.position="bottom") +
-  scale_color_manual(values=coop_palette,
-                     name="Precipitation impacts",
-                     labels=c("Mitigation + SAI","Mitigation")) +
-  xlab("") + ylab("Local temperature increase to preindustrial [°C]") + 
+  scale_color_manual(values=coop_palette) +
+  xlab("") + ylab("Local temperature increase [°C]") + 
   theme_pubr() + theme(legend.position = "none",
                        text=element_text(size=12))
 
@@ -84,7 +81,6 @@ precip2100 <- PREC %>% rename(prec=value) %>%
                group_by(n,file) %>%
                summarise(pop=mean(value)) ) %>%
   inner_join(sd_prec) %>%
-  mutate(Scenario=ifelse(nsrm=="no SRM","Optimal, no SAI",pimp)) %>%
   ggplot() +
   geom_hline(yintercept=0) +
   geom_ribbon(data=data.frame(lats=c(-50,75)),
@@ -110,9 +106,7 @@ precip2100 <- PREC %>% rename(prec=value) %>%
              color="grey",
              alpha=0.5) +
   theme(legend.position="bottom") +
-  scale_color_manual(values=coop_palette,
-                     name="Precipitation impacts",
-                     labels=c("Mitigation + SAI","Mitigation")) +
+  scale_color_manual(values=coop_palette) +
   xlab("") + ylab("Precipitation variation [STD]") + 
   theme_pubr() + theme(legend.position = "none",
                        text=element_text(size=12))
@@ -122,7 +116,6 @@ damages2100 <- gdploss %>%
   inner_join(pop %>% rename(pop=value) ) %>%
   inner_join(main_scenarios_coop) %>%
   inner_join(countries_map) %>%
-  mutate(Scenario=ifelse(nsrm=="no SRM","Optimal, no SAI",pimp)) %>%
   ggplot() + 
   geom_hline(yintercept=0) +
   geom_vline(data=data.frame(lats=c(-45,-30,-15,0,15,30,45,60)),
@@ -143,19 +136,15 @@ damages2100 <- gdploss %>%
     linewidth=2) +
   theme(legend.position="bottom") + 
   theme_pubr() + 
-  scale_color_manual(values=coop_palette,
-                     name="Scenario",
-                     labels=c("Mitigation + SAI","Mitigation")) +
-  scale_fill_manual(values=coop_palette,
-                    name="Scenario",
-                    labels=c("Mitigation + SAI","Mitigation")) +
+  scale_color_manual(values=coop_palette) +
+  scale_fill_manual(values=coop_palette) +
   guides(shape="none") +
   xlab("Average country latitude") + 
   ylab("GDP loss [%]") + theme(legend.position = "right",
                                      text=element_text(size=12))
 
 void <- ggplot() + theme_void() + theme(panel.background = element_rect(fill="white",color="white"))
-fig2_coops <- ggarrange(ggarrange(regtemp2100,precip2100,nrow=1),
-                        ggarrange(void,damages2100,void,nrow=1,widths=c(0.4,1,0.1)),
+fig2_coops <- ggarrange(ggarrange(regtemp2100,precip2100,nrow=1, labels=c("a","b")),
+                        ggarrange(void,damages2100,void,nrow=1,widths=c(0.4,1,0.1), labels=c("","c","")),
                         nrow=2,heights=c(1,1))
 ggsave("fig_coop.png",plot=fig2_coops,width=18, height=16, units="cm")

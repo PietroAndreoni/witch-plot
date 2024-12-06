@@ -1,5 +1,5 @@
 rm(list = ls())
-witch_folder = "../Results_srm/All161024/Main" #Where you're RICE/DICE/RICE50x code is located
+witch_folder = "../Results_srm/All161024/Coalitions" #Where you're RICE/DICE/RICE50x code is located
 #witch_folder = "../Results_srm/Allfree150724" #Where you're RICE/DICE/RICE50x code is located
 #main directory of your results files
 main_directory <- witch_folder # by default, the witch source folder
@@ -61,6 +61,11 @@ sanitize <- function(.x) {
                    nsrm=="rus"~"Russia",
                    nsrm=="chn"~"China",
                    nsrm=="aus"~"Australia",
+                   nsrm=="usabra"~"USA+Brazil",
+                   nsrm=="usaindbrachn"~"USA+Brazil+India+China",
+                   nsrm=="usachn"~"USA+China",
+                   nsrm=="indbra"~"Brazil+India",
+                   nsrm=="chnind"~"China+India",
                    .default = "no SRM" ),
           POL = ifelse(is.na(POL),"cba",POL),
           timp = as.character(as.numeric(str_replace_all(ttype,"[^0-9.-]",""))/10),
@@ -131,8 +136,8 @@ land_temp0 <- as.numeric(coef %>%
   inner_join(area) %>%
   summarise(ltemp0=weighted.mean(value,area)))
 
-theme_set(theme_gray(base_size = 12))
-theme_set(theme_pubr(base_size = 12))
+
+theme_set(theme_pubr(base_size = 7))
 
 maps <- map_data("world")
 maps=data.table(maps)
@@ -152,8 +157,8 @@ countries_map <- reg %>%
                             latitude %in% c(45,60,75) ~ "High latitudes")) %>%
   mutate(latitude=ordered(latitude,c("Equatorial","Tropical","Subtropical","High latitudes")))
 
-regpalette_srm <- c("Optimal"="#121B54",
-                    "Optimal, no SAI"="#00A36C",
+regpalette_srm <- c("Mitigation + SAI"="#121B54",
+                    "Mitigation"="#00A36C",
                     "USA"="#c71585",
                     "China"="#377EB8",
                     "India"="#E41A1C",

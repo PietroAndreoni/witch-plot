@@ -2,8 +2,8 @@
 W_EMI <- get_witch("W_EMI")
 wemi <- W_EMI %>% 
   inner_join(sanitized_names) %>%
-  mutate(Scenario=case_when(nsrm=="no SRM" & COOP=="coop" ~ "Optimal, no SAI",
-                            nsrm=="Cooperative" & COOP=="coop" ~ "Optimal",
+  mutate(Scenario=case_when(nsrm=="no SRM" & COOP=="coop" ~ "Mitigation",
+                            nsrm=="Cooperative" & COOP=="coop" ~ "Mitigation + SAI",
                             nsrm=="no SRM" & COOP=="noncoop" ~ "Free-riding",
                             .default=nsrm) ) %>%
   filter(ttoyear(t)<=2100 & ghg=="co2" & pimp %in% c(1)) %>%
