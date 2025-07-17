@@ -1,71 +1,3 @@
-# Load GDX of all scenarios and basic pre-processing 
-get_witch <- function(variable_name, scenplot=scenlist, check_calibration=FALSE, field = "l", postprocesssuffix=NULL, skip_restrict_regions=F){
-    for (current_pathdir in fullpathdir){
-      for (file in filelist){
-        if(file.exists(file.path(current_pathdir, paste0(file,".gdx")))){
-          mygdx <- gdx(file.path(current_pathdir, paste0(file,".gdx")))
-          if(!is.null(postprocesssuffix)) mygdx <- gdx(file.path(current_pathdir, postprocesssuffix, paste0(paste0(file, "_", postprocesssuffix),".gdx")))
-          if(is.element(variable_name, all_items(mygdx)$variables) | is.element(variable_name, all_items(mygdx)$parameters) | is.element(variable_name, all_items(mygdx)$sets) | is.element(variable_name, all_items(mygdx)$variables) | is.element(variable_name, all_items(mygdx)$equations))
-          {
-            tempdata <- data.table(mygdx[variable_name, field = field])
-            if(!("n" %in% names(tempdata))) tempdata$n <- "World"
-            tempdata$file <- as.character(file)
-            if(length(fullpathdir)>=1){tempdata$pathdir <- basename(current_pathdir)}
-            if(!exists("allfilesdata")){allfilesdata<-tempdata}else{allfilesdata <-rbind(allfilesdata,tempdata)}
-            remove(tempdata)
-          }
-        }
-      }
-    }
-    if(exists("allfilesdata")){
-      allfilesdata$file <- mapvalues(allfilesdata$file , from=names(scenlist), to=scenlist, warn_missing = FALSE)
-      allfilesdata$file <- factor(allfilesdata$file, levels = scenlist) # to snsure ordering in the order of scenarios in scenlist
-      if(str_detect(variable_name, "eq")) {
-        colnames(allfilesdata) <- gsub("V1", "t", colnames(allfilesdata)) 
-        colnames(allfilesdata) <- gsub("V2", "n", colnames(allfilesdata))
-      }
-      allfilesdata <- subset(allfilesdata, file %in% scenplot)
-      if(("t" %in% colnames(allfilesdata)) & !(variable_name=="t")){
-        #check if stochastic and if so convert "branch" to "file" element
-        allfilesdata <- convert_stochastic_gdx(allfilesdata)            
-        allfilesdata$t <- as.numeric(allfilesdata$t)
-      }
-      if(("n" %in% colnames(allfilesdata)) & !(is.element(variable_name, all_items(mygdx)$sets))){allfilesdata$n  <- mapvalues(allfilesdata$n , from=witch_regions, to=display_regions, warn_missing = F)}else{if(!(variable_name %in% c("eu", "oecd", "eu27", "eu28", "europe"))) allfilesdata$n <- "World"}
-      if(str_detect(variable_name, "MAGICC|HECTOR")) {allfilesdata <- suppressWarnings(allfilesdata[,-c("magicc_n", "hector_n")])}
-      
-      #combine _old, _new, _late to one unit in case present
-      combine_old_new_j = TRUE
-      if(combine_old_new_j & (variable_name %in% varlist_combine_old_new_j)){
-        j_set <- str_subset(names(allfilesdata), "^j")  
-        if(length(j_set)>0){
-          #if Q_EN, REMOVE old, new etc. to avoid double counting
-          if(variable_name=="Q_EN") allfilesdata <- allfilesdata %>% filter(!str_detect(get(j_set), paste(c("_old", "_new", "_late"), collapse = "|")))   
-          allfilesdata <- allfilesdata %>% mutate(!!j_set := gsub(paste(c("_old", "_new", "_late"), collapse = "|"), "", get(j_set))) %>% group_by_at(setdiff(names(allfilesdata), "value")) %>% summarize(value = sum(value), .groups = "drop") %>% as.data.frame()
-        }}
-      
-      #try adding historical values
-      if(historical & !(is.element(variable_name, all_items(mygdx)$sets))){allfilesdata <- add_historical_values(allfilesdata, varname=variable_name, scenplot=scenplot, check_calibration=check_calibration, verbose=F)}
-      # also save as data.table
-      allfilesdata <- as.data.table(allfilesdata)
-      #in case nice_region_names exist map region names for those with a nice name
-      if(exists("nice_region_names") & !unique(allfilesdata$n)[1]=="World") allfilesdata$n <- mapvalues(allfilesdata$n , from=names(nice_region_names), to=nice_region_names, warn_missing = FALSE)
-      #in case restrict_regions exists keep only these regions
-      if(exists("restrict_regions") & !skip_restrict_regions & !unique(allfilesdata$n)[1]=="World") allfilesdata <- subset(allfilesdata, n %in% restrict_regions)
-      #in case separate file to more meaningful columns
-      if(exists("file_separate")){
-        allfilesdata <- filetosep(allfilesdata, type = file_separate[1], sep = file_separate[2], names = file_separate[-c(1,2)])
-        for(sep in unname(file_separate[3:length(file_separate)])) allfilesdata[[sep]] <- gsub(sep, "", allfilesdata[[sep]])
-      }
-      
-      if(("t" %in% names(allfilesdata)) & (!any(str_detect(allfilesdata$t, "_")))) allfilesdata$t <- as.numeric(allfilesdata$t)
-      return(allfilesdata)
-    }else{print(str_glue("Element {variable_name} was not found in any GDX file."));return(data.frame())}
-}
-
-#use memoise for get_witch function
-get_witch <- memoise(get_witch)
-
-
 
 #Regional or global line plots of already loaded data
 plot_witch <- function(data, varname="value", regions="World", scenplot=scenlist, ylab=varname, ylim0=FALSE, conv_factor=1, nagg="sum", rm.NA = T){
@@ -97,7 +29,6 @@ get_plot_witch <- function(variable_name, additional_set="na", additional_set_id
   #aggregation=none: no graph is created no aggregation performed, just loads the element
   #some default values, maybe not even needed to customize
   #removepattern="results_"
-  #ssp_grid = FALSE
   #DEBUG:
   #variable_name="Q_OUT"; additional_set="f"; additional_set_id="oil"; convert=1; unit=""; aggregation="regional"; cumulative=FALSE; plot=TRUE; bar=""; bar_x="time"; bar_y="value"; bar_setvalues=""; bar_colors=""; regions=witch_regions; scenplot=scenlist; variable_field="l"; current_pathdir = fullpathdir[1]; file <- filelist[1];
   line_size = 1.5;
@@ -156,15 +87,11 @@ get_plot_witch <- function(variable_name, additional_set="na", additional_set_id
       else{allfilesdata <- aggregate(value~t+file, data=allfilesdata, sum)}
       #print(str(allfilesdata)); assign("test",allfilesdata,envir = .GlobalEnv)
       allfilesdata <- as.data.table(allfilesdata)
-      #if(ssp_grid){allfilesdata$ssp <- str_extract(allfilesdata$file, "ssp[1-5]")}
       #try for RCP:
-      if(ssp_grid){allfilesdata <- ssptriple(allfilesdata); line_colour = "rcp"; line_type="spa"}
       p <- ggplot(data=subset(allfilesdata),aes(ttoyear(t),value, colour=get(line_colour), linetype=get(line_type))) + geom_line(stat="identity", size=line_size) + xlab("year") +ylab(unit_conversion$unit)
       if(show_legend_title){p <- p + labs(linetype=line_type, colour=line_colour)}else{p <- p + theme(legend.title=element_blank())} 
       if(show_numbers_2100){p <- p + geom_text(data=subset(allfilesdata, t==20), aes(x=2100, y=value, label=round(value, 2)))}
-      if(ssp_grid){p <- p + facet_grid(. ~ ssp)}
       if(length(fullpathdir)!=1){p <- p + facet_grid(pathdir ~ .)}
-      if(length(fullpathdir)!=1 & ssp_grid){p <- p + facet_grid(pathdir ~ ssp)}
       if(length(fullpathdir)==1){p <- p + guides(linetype="none")}
       if(plot){saveplot(variable_name)}
     } 
@@ -172,24 +99,16 @@ get_plot_witch <- function(variable_name, additional_set="na", additional_set_id
     {
       allfilesdata$n <- NULL      
   allfilesdata <- allfilesdata %>% group_by_at(c("pathdir", file_group_columns, "t")) %>% summarize(value=mean(value), .groups = "drop")
-      if(ssp_grid){allfilesdata <- ssptriple(allfilesdata); line_colour = "rcp"; line_type="spa"}
       p <- ggplot(data=subset(allfilesdata),aes(ttoyear(t),value, colour=get(line_colour), linetype=get(line_type))) + geom_line(stat="identity", linewidth=line_size) + xlab("year") +ylab(unit_conversion$unit) + labs(linetype=line_type, colour=line_colour)
       if(show_numbers_2100){p <- p + geom_text(data=subset(allfilesdata, t==20), aes(x=2100, y=value, label=round(value, 2)))}
-      if(ssp_grid){p <- p + facet_grid(. ~ ssp)}
       if(length(fullpathdir)!=1){p <- p + facet_grid(pathdir ~ .)}
-      if(length(fullpathdir)!=1 & ssp_grid){p <- p + facet_grid(pathdir ~ ssp)}   
       if(length(fullpathdir)==1){p <- p + guides(linetype="none")}
       if(plot){saveplot(variable_name)}
     } 
     if (aggregation == "regional") 
     {
-      if(ssp_grid){allfilesdata$ssp <- str_extract(allfilesdata$file, "ssp[1-5]")}
-      # print(str(allfilesdata))
-      # assign("test", allfilesdata)
       p <- ggplot(subset(allfilesdata, n %in% regions),aes(ttoyear(t),value,colour=n, linetype=file)) + geom_line(stat="identity", linewidth=line_size) + xlab("year") +ylab(unit_conversion$unit) + scale_colour_manual(values = region_palette)
-      if(ssp_grid){p <- p + facet_grid(. ~ ssp)}
       if(length(fullpathdir)!=1){p <- p + facet_grid(pathdir ~ .)}
-      if(length(fullpathdir)!=1 & ssp_grid){p <- p + facet_grid(pathdir ~ ssp)}   
       if(plot){saveplot(variable_name)}
     }
     if (aggregation == "all") 
@@ -256,17 +175,20 @@ getvar_witchhist <- function(varname, unit_conversion=1, hist_varname=varname, a
 
 
 #Function to create a snapshot and setup the data for gdxompaR witch-online to be self-containted and deployed e.g. through shinyapps.io
-create_witch_online <- function(list_of_variables=c("Q", "Q_EN", "Q_FUEL", "Q_OUT", "Q_EMI", "K", "K_EN", "I_EN", "I", "I_RD", "MCOST_INV", "COST_EMI", "MCOST_EMI", "CPRICE", "MCOST_FUEL", "TEMP", "TRF", "OMEGA", "Q_IN", "ykali", "tpes", "carbonprice", "emi_cap", "l"), deploy = F) {
+create_witch_plot_online <- function(list_of_variables=c("Q", "Q_EN", "Q_FUEL", "Q_OUT", "Q_EMI", "K", "K_EN", "I_EN", "I", "I_RD", "MCOST_INV", "COST_EMI", "MCOST_EMI", "CPRICE", "MCOST_FUEL", "TEMP", "TRF", "OMEGA", "Q_IN", "ykali", "tpes", "carbonprice", "emi_cap", "l"), deploy = F) {
   #preload all variables (execult eht followig lines separately before deploying)
   aux_vars <- c("ghg", "csi", "allerr", "allinfoiter", "all_optimal", "all_feasible", "price_iter")
-  lapply(c(aux_vars, list_of_variables), get_witch)
-  if(file.exists("gdxcompaR//witch-online//allvariables.Rdata")) file.remove("gdxcompaR//witch-online//allvariables.Rdata")
-  assign("deploy_online", TRUE, envir = .GlobalEnv)
-  save.image(file="gdxcompaR//witch-online//allvariables.Rdata")
+  allvariables <- lapply(c(aux_vars, list_of_variables), get_witch)
+  names(allvariables) <- as.list(c(aux_vars, list_of_variables))
+  #now also store as variables in the environment
+  for(i in 1:length(allvariables)) assign(names(allvariables)[i], allvariables[[i]])
+  if(file.exists("gdxcompaR//witch//allvariables.Rdata")) file.remove("gdxcompaR//witch//allvariables.Rdata")
+  deploy_online <<- TRUE
+  save.image(file="gdxcompaR//witch//allvariables.Rdata")
   #deploy app
   if(deploy){
     library(rsconnect)
-    deployApp(appDir = "gdxcompaR/witch-online/")
+    deployApp(appDir = "gdxcompaR/witch")
   }
 }
 
