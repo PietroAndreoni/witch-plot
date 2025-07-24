@@ -1,16 +1,14 @@
 rm(list = ls())
-witch_folder = "../Results_srm/All161024/Coalitions" #Where you're RICE/DICE/RICE50x code is located
-#witch_folder = "../Results_srm/Allfree150724" #Where you're RICE/DICE/RICE50x code is located
-#main directory of your results files
-main_directory <- witch_folder # by default, the witch source folder
+main_folder = "../Results_secondround/Main" #Where you're RICE/DICE/RICE50x code is located
+witch_folder = main_folder #Where you're RICE/DICE/RICE50x code is located
 subdir = c("") #can be multiple directories
 
-reg_id = "maxiso3" #for historical data folder
+reg_id = "maxiso3sai" #for historical data folder
 year0 = 2015
 tstep = 5
 
-restrict_files = c("results_") #to all scenarios matching partly at least one of its arguments
-exclude_files = c("")
+restrict_files = c("IMPbhmspecbest") #to all scenarios matching partly at least one of its arguments
+exclude_files = c("INJsovereign","INJsymmetric")
 removepattern = c("")
 
 yearmin = 1980
@@ -37,16 +35,14 @@ sanitize <- function(.x) {
 .x %>% 
   mutate(COOP=case_when(str_detect(file,"noncoop")~"noncoop",
                  str_detect(file,"coop")~"coop"),
-  aggr=case_when(str_detect(file,"maxiso3")~"maxiso3",
-                 str_detect(file,"ed57")~"ed57",
+  aggr=case_when(str_detect(file,"maxiso3sai")~"iso3",
+                 str_detect(file,"ed58")~"ed58",
                  .default = "maxiso3"),
   POL=str_extract(file,"(?<=POL).+?(?=_)"),
-  nsrm=str_extract(file,"(?<=SRM).+?(?=_)"),
+  nsrm=str_extract(file,"(?<=SAI).+?(?=_)"),
   zinj=str_extract(file,"(?<=INJ).+?(?=_)"),
-  ttype=str_extract(file,"(?<=IMPT).+?(?=_)"),
-  ptype=str_extract(file,"(?<=IMPP).+?(?=_)"),
-  tend=str_extract(file,"(?<=GE).*"),
-  spread=str_extract(file,"(?<=TSPR).*")) %>%
+  impacts=str_extract(file,"(?<=IMP).+?(?=_)"),
+  trade=str_extract(file,"(?<=TRD).*")) %>%
   mutate( nsrm=case_when(nsrm=="brics"~"BRICS",
                    nsrm=="sc"~"UN Security Council",
                    nsrm=="scbrics"~"UN Security Council and BRICS",
@@ -66,16 +62,10 @@ sanitize <- function(.x) {
                    nsrm=="usachn"~"USA+China",
                    nsrm=="indbra"~"Brazil+India",
                    nsrm=="chnind"~"China+India",
+                   nsrm=="all"~"Cooperative",
                    .default = "no SRM" ),
           POL = ifelse(is.na(POL),"cba",POL),
-          timp = as.character(as.numeric(str_replace_all(ttype,"[^0-9.-]",""))/10),
-          pimp = as.character(as.numeric(str_replace_all(ptype,"[^0-9.-]",""))/10),
-          ptype = str_replace_all(ptype,"[0-9.-]",""),
-          ttype = str_replace_all(ttype,"[0-9.-]",""),
-          zinj = ifelse(zinj=="no","no SRM",zinj),
-          spread = ifelse(is.na(spread),"1",as.character(as.numeric(spread)/10)),
-          tend = ifelse(is.na(tend),"2200",tend) ) %>%
-    mutate(nsrm=ifelse(nsrm=="USA" & COOP=="coop", "Cooperative", nsrm) ) %>%
+          zinj = ifelse(zinj=="no","no SAI",zinj)) %>%
     mutate(Scenario=case_when(nsrm=="no SRM" & COOP=="coop" ~ "Mitigation",
                             nsrm=="Cooperative" & COOP=="coop" ~ "Mitigation + SAI",
                             nsrm=="no SRM" & COOP=="noncoop" ~ "Free-riding",
@@ -87,36 +77,35 @@ injton <- function(.x) {
     mutate(injn = as.numeric(ifelse(str_detect(inj,"N"),str_remove(inj,"N"),paste0("-",str_remove(inj,"S")))))
 }
 
-SRM <- get_witch("SRM")
-W_SRM <- get_witch("W_SRM")
-N_SRM <- get_witch("N_SRM")
-Z_SRM <- get_witch("Z_SRM")
+SAI <- get_witch("SAI")
+W_SAI <- get_witch("W_SAI")
+N_SAI <- get_witch("N_SAI")
+Z_SAI <- get_witch("Z_SAI")
 MIU <- get_witch("MIU")
-srm_only <- get_witch("srm_only_region")
+sai_only <- get_witch("sai_only_region")
 IMPACT <- get_witch("IMPACT")
-DPRECIP_SRM <- get_witch("DPRECIP_REGION_SRM")
-DTEMP_SRM <- get_witch("DTEMP_REGION_SRM")
+DPRECIP_SAI <- get_witch("DPRECIP_REGION_SAI")
+DTEMP_SAI <- get_witch("DTEMP_REGION_SAI")
 TEMP <- get_witch("TEMP_REGION")
 PREC <- get_witch("PRECIP_REGION")
 DAMFRAC <- get_witch("DAMFRAC")
 DAMAGES <- get_witch("DAMAGES")
 TATM <- get_witch("TATM")
-E <- get_witch("E")
 coef <- get_witch("climate_region_coef")
-coef_T <- get_witch("coeff_T") %>% select(n,V2,file,value) %>% unique() %>% rename(Coefficient=V2)
-coef_P <- get_witch("coeff_P") %>% select(n,V2,file,value) %>% unique() %>% rename(Coefficient=V2)
-pop <- get_witch("pop")
 Y <- get_witch("Y")
 YGROSS <- get_witch("YGROSS")
 ykali <- get_witch("ykali")
+pop <- get_witch("pop")
+TATM_SAI <- get_witch("TATM_SAI")
+TATM_GHG <- get_witch("TATM_GHG")
 
-sanitized_names <- as.data.frame(unique(W_SRM %>% select(file)) %>% sanitize()) 
+sanitized_names <- as.data.frame(unique(W_SAI %>% select(file)) %>% sanitize()) 
 sc <- c("usa","chn","fra","gbr","rus")
 brics <-  c("ind","chn","rus","bra","zaf")
 wp <-  c("usa","ind","chn","rus")
 nsingle <- c("usa","gbr","ind","idn","nga","fra","gbr","rus","chn")
 
-valid_data <- gdx('../data_maxiso3/data_validation.gdx')
+valid_data <- gdx('C:/Users/pietr/OneDrive - Politecnico di Milano/RICE50/RICE50x/data_maxiso3sai/data_validation.gdx')
 area <- valid_data["socecon_valid_wdi_sum"] %>% 
   filter(V1=="land" & t=="2") %>% 
   rename(area=value) %>%
@@ -174,17 +163,10 @@ NPVgdploss <- Y %>%
   summarise(value = sum( (ykali-value)/(1+dr)^(t-1) ) / sum( (ykali)/(1+dr)^(t-1) ) )
 
 ####### figure 1
-optimal_temperature <- coef_T %>%
-  group_by(n,file) %>%
-  summarise(opttemp=-value[Coefficient=="b"]/(2*value[Coefficient=="c"])) 
-
 PREC <- get_witch("PRECIP_REGION") %>%
-  inner_join(coef %>% filter(V1=="base_precip") %>% rename(base=value)) %>%
-  mutate(value=value/(base*12))
-
-optimal_precipitation <- coef_P %>%
-  group_by(n,file) %>%
-  summarise(optprec=-value[Coefficient=="b"]/(2*value[Coefficient=="c"])*1e3) 
+  inner_join(get_witch("impact_clivars")  %>%
+               pivot_wider(names_from="V2") ) %>%
+  mutate(value=value/base_precip) %>% select(t,n,file,value)
 
 ##### build damages dataframe
 damfrac_type <- get_witch("damfrac_type") %>% 
@@ -198,7 +180,7 @@ gdploss <- Y %>%
   full_join(YGROSS %>% rename(ykali=value)) %>%
   mutate(value=(ykali-value)/ykali )  %>%
   inner_join(sanitized_names) %>%
-  group_by(t,n,pimp,spread,ptype) %>%
+  group_by(t,n,impacts,trade) %>%
   mutate(valuerel=(value-value[nsrm=="Cooperative" & COOP=="coop"])*100 )
 
 gdploss_g <- Y %>%
@@ -206,7 +188,7 @@ gdploss_g <- Y %>%
   group_by(file,t) %>%
   summarise(value=sum(ykali-value)/sum(ykali) )  %>%
   inner_join(sanitized_names) %>%
-  group_by(t,pimp,spread,ptype) %>%
+  group_by(t,impacts,trade) %>%
   mutate(valuerel=(value-value[nsrm=="Cooperative" & COOP=="coop"])*100 ) 
 
 damfrac_g <- DAMAGES %>%
@@ -218,7 +200,7 @@ brackets <- damfrac_type %>%
   pivot_longer(c(ab,temp,prec),names_to="type") %>%
   inner_join(sanitized_names) %>%
   filter(ttoyear(t) == 2100) %>%
-  group_by(n,type,pimp,spread,ptype) %>%
+  group_by(n,type) %>%
   mutate(value=(value-value[nsrm=="Cooperative" & COOP=="coop"])*100 ) %>%
   filter(!(nsrm=="Cooperative" & COOP=="coop")) %>%
   ungroup() %>%
@@ -236,17 +218,35 @@ land_temp_nogeong <- TATM %>%
   group_by(file,t) %>%
   summarise(value=weighted.mean(alpha_temp+beta_temp*value,area))
 
-sec_data <- gdx('../RICE50x/data_maxiso3/data_baseline.gdx')
-climate_regional_data <- gdx('../RICE50x/data_maxiso3/data_mod_climate_regional.gdx')
-srm_regional_data <- gdx('../RICE50x/data_maxiso3/data_mod_srm_regional.gdx')
+sec_data <- gdx('C:/Users/pietr/OneDrive - Politecnico di Milano/RICE50/RICE50x/data_maxiso3sai/data_baseline.gdx')
+climate_regional_data <- gdx('C:/Users/pietr/OneDrive - Politecnico di Milano/RICE50/RICE50x/data_maxiso3sai/data_mod_climate_regional.gdx')
+sai_regional_data <- gdx('C:/Users/pietr/OneDrive - Politecnico di Milano/RICE50/RICE50x/data_maxiso3sai/data_mod_sai.gdx')
 
-clim <- climate_regional_data["climate_region_coef_cmip5"]
+clim <- climate_regional_data["climate_region_coef_cmip6_area"]
 pop2 <- sec_data["ssp_l"] %>% filter(V1=="ssp2") %>% mutate(t=as.numeric(t)) %>% rename(pop2=value,ssp=V1)
 gdp <- sec_data["ssp_ykali"] %>% filter(V1=="ssp2") %>% mutate(t=as.numeric(t)) %>% rename(gdp=value,ssp=V1)
-sd_prec <- srm_regional_data["precipitation_hist"] %>%
-  pivot_wider(names_from="V2") %>%  
-  group_by(n) %>% 
-  summarise(sd=sd/mean) %>%
-  ungroup() %>%
-  mutate(sd=ifelse(is.na(sd),mean(sd,na.rm=TRUE),sd))
-base_prec <- clim %>% filter(V1=="base_precip") %>% mutate(prec0=value*12/1000) %>% select(-V1,-value)
+sd_prec <- get_witch("impact_clivars")  %>%
+  pivot_wider(names_from="V2") %>%
+  mutate(sd=sd_prec/base_precip) %>%
+  select(n,sd) %>% unique()
+base_prec <- get_witch("impact_clivars")  %>%
+  pivot_wider(names_from="V2") %>% 
+  mutate(prec0=base_precip/1000) %>% select(n,prec0)
+base_temp <- get_witch("impact_clivars")  %>%
+  pivot_wider(names_from="V2") %>% 
+  mutate(temp0=base_temp) %>% select(n,temp0)
+optimal_temp <- get_witch("impact_coef")  %>%
+  pivot_wider(names_from="coefs") %>%  select(-n) %>%
+  full_join(get_witch("impact_clivars")  %>%
+  pivot_wider(names_from="V2")) %>%
+  mutate(opttemp=(TM-2*dev_TM_all_2*base_temp/sd_temp^2)/-(2*(TM_2+dev_TM_all_2/sd_temp^2)) ) 
+#  mutate(opttemp=TM/-(2*TM_2) )
+#   mutate(opttemp=base_temp)
+optimal_prec <- get_witch("impact_coef")  %>%
+  pivot_wider(names_from="coefs") %>%  select(-n) %>%
+  full_join(get_witch("impact_clivars")  %>%
+              pivot_wider(names_from="V2")) %>%
+  mutate(optprec=((RR-2*dev_RR_all_2*base_precip/1000/(sd_prec/1000)^2)/-(2*(RR_2+dev_RR_all_2/(sd_prec/1000)^2)) ) / (base_precip / 1000) )
+#  mutate(opttemp=RR/-(2*RR_2) )
+#  mutate(optprec=base_precip)
+

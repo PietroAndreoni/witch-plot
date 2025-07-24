@@ -1,37 +1,51 @@
-precipitation_sel <- 1
-tspread_sel <- 1
-
 abatefrac <- get_witch("ABATECOST") %>%
+  group_by(file,t,n) %>%
+  summarise(value=sum(value)) %>%
   inner_join(YGROSS %>% rename(ykali=value)) %>%
   mutate(value = value/ykali,source="ab") %>%
-  select(file,n,value,source,t) 
+  select(file,n,value,source,t) %>%
+  complete()
 
-g0 <- get_witch("basegrowthcap")  %>% rename(g0=value)
- 
+saifrac <- get_witch("COST_SAI") %>%
+  group_by(file,t,n) %>%
+  summarise(value=sum(value)) %>%
+  inner_join(YGROSS %>% rename(ykali=value)) %>%
+  mutate(value = value/ykali,source="sai") %>%
+  select(file,n,value,source,t) %>%
+  complete()
+
 perc_impact <- get_witch("damfrac_type") %>%
-  rename(source=d) %>%
+  mutate(source=case_when(str_detect(d,"temp")~"temp",
+                          str_detect(d,"prec")~"prec",
+                          str_detect(d,"spill")~"spill",
+                          .default="others")) %>%
+  group_by(t,n,file,source) %>%
+  summarise(value=sum(value)) %>%
+  ungroup() %>%
   bind_rows(abatefrac) %>%
+  bind_rows(saifrac) %>%
   filter(ttoyear(t)==2100) %>%
   group_by(file,n,t) %>%
-  mutate(perc=value/sum(value)) %>% ungroup() %>% select(-pathdir)
+  mutate(perc=value/sum(value)) %>% 
+  complete()
 
 gdploss_barplot <- gdploss %>% 
   inner_join(sanitized_names) %>%
-  filter(ttoyear(t)==2100 & pimp==precipitation_sel & spread==tspread_sel) %>%
-  inner_join(pop %>% rename(pop=value)) %>%
   inner_join(perc_impact %>% select(-value)) %>%
+  inner_join(pop %>% rename(pop=value)) %>%
   inner_join(countries_map) %>%
   group_by(n,source) %>%
   mutate(valueerel=-(perc*value-perc[nsrm=="Cooperative" & COOP=="coop"]*value[nsrm=="Cooperative" & COOP=="coop"]) /(value[nsrm=="Cooperative" & COOP=="coop"]-value[nsrm=="no SRM" & COOP=="coop"])) %>%
   filter(!nsrm %in% c("no SRM","Cooperative") ) %>%
   ggplot() +
   geom_hline(yintercept=100) +
-  geom_bar(data=. %>% group_by(latitude,file,t,source) %>%
+  ggpattern::geom_bar_pattern(data=. %>% group_by(latitude,file,t,source) %>%
              summarise(med=quantile(valueerel*100,0.5) ) %>%
              inner_join(sanitized_names),
            aes(x=interaction(ordered(nsrm,c("USA","China","India","Brazil")), latitude ),
                y=med,
                fill=latitude,
+               pattern=source,
                alpha=source),
            color="black",
            stat="identity",
@@ -61,10 +75,28 @@ gdploss_barplot <- gdploss %>%
                  group=latitude), 
              size=2,color="black") +
   coord_flip()+
-#  facet_wrap(pimp~.,nrow=1,labeller=as_labeller(c("1"="Low precipitation impacts","5"="High precipitation impacts"))) +
   xlab("") + ylab("%")+
-  scale_alpha_manual(labels=c("Mitigation","Precipitations","Temperature"),
-                     values=c(0.1,0.5,1),
+  ggpattern::scale_pattern_manual(labels=c("Mitigation"="ab",
+                                "Precipitations"="prec",
+                                "Temperature"="temp",
+                                "Spillover"="spill",
+                                "SAI"="sai"),
+                       values=c(ab = "none", 
+                                temp = "none",
+                                prec = "circle",
+                                sai = "none",
+                                spill = "stripe"),
+                       name="Source") +
+  scale_alpha_manual(labels=c("Mitigation"="ab",
+                              "Precipitations"="prec",
+                              "Temperature"="temp",
+                              "Spillover"="spill",
+                              "SAI"="sai"),
+                     values=c("ab"=0.1,
+                              "sai"=0.5,
+                              "temp"=1,
+                              "prec"=1,
+                              "spill"=1),
                      name="Source") +
   guides(fill="none") +
   theme_pubr() +
@@ -85,7 +117,7 @@ map <- countries_map %>%
 n_to_name <- c("Brazil"="bra","India"="ind","China"="chn","USA"="usa")
 damages_maps <- gdploss %>% 
   inner_join(sanitized_names) %>%
-  filter(ttoyear(t)==2100 & pimp==precipitation_sel & spread==tspread_sel) %>%
+  filter(ttoyear(t)==2100) %>%
   inner_join(pop %>% rename(pop=value)) %>%
   inner_join(countries_map) %>%
   group_by(n) %>%
@@ -111,7 +143,7 @@ damages_maps <- gdploss %>%
 
 percentages <- gdploss %>% 
   inner_join(sanitized_names) %>%
-  filter(ttoyear(t)==2100 & pimp==precipitation_sel & spread==tspread_sel) %>%
+  filter(ttoyear(t)==2100) %>%
   inner_join(pop %>% rename(pop=value)) %>%
   inner_join(ykali %>% rename(y0=value)) %>%
   inner_join(countries_map) %>%

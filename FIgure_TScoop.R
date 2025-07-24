@@ -1,7 +1,7 @@
 main_scenarios_coop <- sanitized_names %>% 
-  filter(COOP=="coop" & pimp==1 & spread==1)
+  filter(COOP=="coop")
 
-figa <- Z_SRM %>% 
+figa <- Z_SAI %>% 
   inner_join(main_scenarios_coop) %>%
   filter(ttoyear(t)<=2100 & !is.na(value) & Scenario!="Mitigation" & !inj %in% c("60N","60S")) %>%
   ggplot() +
@@ -16,18 +16,18 @@ figa <- Z_SRM %>%
   scale_fill_manual(name="Injection latitude",
                     values=c("darkblue","#4a8dff","#CDDDFF","grey","#ffbaba","#ff5252","#a70000"))
 
-figb <- land_temp %>%
+figb <- TATM %>%
   inner_join(main_scenarios_coop) %>%
   filter(ttoyear(t)<=2100) %>%
   ggplot(aes(x=ttoyear(t),
-             y=value-land_temp0,
+             y=value,
              color=nsrm,
              group=file)) +
   geom_line(linewidth=1) +
-  geom_line(data=land_temp_nogeong %>%
+  geom_line(data=TATM_GHG %>%
               inner_join(main_scenarios_coop) %>%
               filter(ttoyear(t)<=2100 & nsrm!="no SRM"),
-            aes(x=ttoyear(t),y=value-land_temp0,color=nsrm), 
+            aes(x=ttoyear(t),y=value,color=nsrm), 
             linetype=2,
             linewidth=1) +
   theme_pubr() + 
