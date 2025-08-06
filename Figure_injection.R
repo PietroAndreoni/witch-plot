@@ -15,12 +15,12 @@ prec  <- emulator_data["srm_precip_response_area"] %>%
   mutate(inj_lat=ifelse(str_detect(inj,"S"),as.numeric(paste0("-",str_remove(inj,"S"))),as.numeric(str_remove(inj,"N")))  ) %>%
   inner_join(countries_map)
 
-# temp <- get_witch("sai_temp") %>% 
-#   mutate(inj_lat=ifelse(str_detect(inj,"S"),as.numeric(paste0("-",str_remove(inj,"S"))),as.numeric(str_remove(inj,"N")))  ) %>%
-#   inner_join(countries_map)
-# prec <- get_witch("sai_precip") %>% 
-#   mutate(inj_lat=ifelse(str_detect(inj,"S"),as.numeric(paste0("-",str_remove(inj,"S"))),as.numeric(str_remove(inj,"N")))  ) %>%
-#   inner_join(countries_map)
+temp2 <- get_witch("sai_temp") %>%
+  mutate(inj_lat=ifelse(str_detect(inj,"S"),as.numeric(paste0("-",str_remove(inj,"S"))),as.numeric(str_remove(inj,"N")))  ) %>%
+  inner_join(countries_map)
+prec2 <- get_witch("sai_precip") %>%
+  mutate(inj_lat=ifelse(str_detect(inj,"S"),as.numeric(paste0("-",str_remove(inj,"S"))),as.numeric(str_remove(inj,"N")))  ) %>%
+  inner_join(countries_map)
 tempvar <- clim %>% filter(V1=="beta_temp")
 precvar <- clim %>% filter(V1=="beta_precip")
 
@@ -129,13 +129,33 @@ f1 <- ggarrange(f1a,f1b,nrow=1,common.legend = TRUE,labels=c("a","b"))
 ggsave("Injection.png",plot=f1,dpi=320,width=18,height=9,units="cm")
 
 
+model_agreement_prec <- prec %>% 
+  inner_join(sd_prec) %>%
+  group_by(n,inj,w) %>% summarise(agr=n_distinct(sign(value))) %>%
+  ungroup() %>% mutate(agr=ifelse(agr==1,1,0)) %>%
+  complete(agr) %>%
+  group_by(n,inj) %>% summarise(agr=paste0(sum(agr),"/2"))
+
 inj_prec <- ggplot(prec %>% 
-                     group_by(n,inj) %>%
-                     filter(row_number()==1) %>%
+                     group_by(n,inj_lat) %>%
+                     filter(se=="best" & w=="area") %>%
          select(n,inj,value) %>%
          inner_join(sd_prec) %>%
+         full_join(model_agreement_prec) %>%
          left_join(reg %>% filter(iso3!='ATA')) ) +
-         geom_polygon(aes(x = long, y = lat,group = group, fill = value/sd),size=.1,color="black") +
+  ggpattern::geom_polygon_pattern(aes(x = long, y = lat,group = group, fill = value/sd, pattern=agr, color=agr),
+                                  size=.1,
+                                  pattern_density=0.02,
+                                  pattern_colour="grey20",
+                                  pattern_fill="grey20",
+                                  pattern_size=0.25) +
+  ggpattern::scale_pattern_manual(values=c("2/2" = "none",
+                                           "0/2" = "stripe",
+                                           "1/2" = "circle"),
+                                  name="Agreement") +
+  scale_color_manual(values=c("2/2" = "red",
+                                           "0/2" = "black",
+                                           "1/2" = "black")) +
   facet_wrap(ordered(inj,c("60N","45N","30N","15N","0","15S","30S","45S","60S"))~.,) + 
   scale_fill_gradient2(name="Precipitation variation [SD]")
 ggsave("SI_injprec.png",plot=inj_prec,dpi=320,width=18,height=18,units="cm")
