@@ -2,12 +2,13 @@ rm(list = ls())
 main_folder = "../Results_secondround/Main" #Where you're RICE/DICE/RICE50x code is located
 witch_folder = main_folder #Where you're RICE/DICE/RICE50x code is located
 subdir = c("") #can be multiple directories
+gdxtools::igdx("/Library/Frameworks/GAMS.framework/Resources/")
 
 reg_id = "maxiso3sai" #for historical data folder
 year0 = 2015
 tstep = 5
 
-restrict_files = c("IMPbhmspecbest") #to all scenarios matching partly at least one of its arguments
+restrict_files = c("results_") #to all scenarios matching partly at least one of its arguments
 exclude_files = c("INJsovereign","INJsymmetric")
 removepattern = c("")
 
@@ -42,8 +43,10 @@ sanitize <- function(.x) {
   nsrm=str_extract(file,"(?<=SAI).+?(?=_)"),
   zinj=str_extract(file,"(?<=INJ).+?(?=_)"),
   impacts=str_extract(file,"(?<=IMP).+?(?=_)"),
+  scentemp=str_extract(file,"(?<=T).+?(?=_)"),
+  scenprec=str_extract(str_remove_all(file,"_POL|_IMP"),"(?<=P).+?(?=_)"),
   trade=str_extract(file,"(?<=TRD).*")) %>%
-  mutate( nsrm=case_when(nsrm=="brics"~"BRICS",
+  mutate(nsrm=case_when(nsrm=="brics"~"BRICS",
                    nsrm=="sc"~"UN Security Council",
                    nsrm=="scbrics"~"UN Security Council and BRICS",
                    nsrm=="wp"~"Major Powers",
@@ -65,16 +68,21 @@ sanitize <- function(.x) {
                    nsrm=="all"~"Cooperative",
                    .default = "no SRM" ),
           POL = ifelse(is.na(POL),"cba",POL),
-          zinj = ifelse(zinj=="no","no SAI",zinj)) %>%
+          zinj = ifelse(zinj=="no","no SAI",zinj),
+         ci_imp=str_extract(str_remove(impacts,"bhmspec|bhmtspec|bhmpspec|spec|bhm"),"best|mlo|mhi|lo|hi"),
+         ci_p=str_extract(scenprec,"best|obs|lo|up"),
+         ci_t=str_extract(scentemp,"best|obs|lo|up"),
+         impacts=str_extract(impacts,"bhmspec|bhmtspec|bhmpspec|spec|bhm"),
+         scenprec=str_extract(scenprec,"area|pop"),
+         scenprec=str_extract(scentemp,"area|pop")) %>%
     mutate(Scenario=case_when(nsrm=="no SRM" & COOP=="coop" ~ "Mitigation",
                             nsrm=="Cooperative" & COOP=="coop" ~ "Mitigation + SAI",
                             nsrm=="no SRM" & COOP=="noncoop" ~ "Free-riding",
-                            .default=nsrm) ) 
+                            .default=nsrm)) 
 }
 
 injton <- function(.x) {
-.x %>%
-    mutate(injn = as.numeric(ifelse(str_detect(inj,"N"),str_remove(inj,"N"),paste0("-",str_remove(inj,"S")))))
+as.numeric(ifelse(str_detect(.x,"N"),str_remove(.x,"N"),paste0("-",str_remove(.x,"S"))))
 }
 
 SAI <- get_witch("SAI")
@@ -105,7 +113,7 @@ brics <-  c("ind","chn","rus","bra","zaf")
 wp <-  c("usa","ind","chn","rus")
 nsingle <- c("usa","gbr","ind","idn","nga","fra","gbr","rus","chn")
 
-valid_data <- gdx('C:/Users/pietr/OneDrive - Politecnico di Milano/RICE50/RICE50x/data_maxiso3sai/data_validation.gdx')
+valid_data <- gdx('../data_maxiso3sai/data_validation.gdx')
 area <- valid_data["socecon_valid_wdi_sum"] %>% 
   filter(V1=="land" & t=="2") %>% 
   rename(area=value) %>%
@@ -128,11 +136,14 @@ land_temp0 <- as.numeric(coef %>%
 
 theme_set(theme_pubr(base_size = 7))
 
+#Add additional region mappings
+region_mapping <- witch_region_mapping("../data_maxiso3sai/maxiso3sai.inc")
+region_mapping <- rbind(region_mapping,data.table(maxiso3sai = "row", iso3 = "YEM"))
 maps <- map_data("world")
 maps=data.table(maps)
 maps$iso3 = countrycode(maps$region, origin = 'country.name', destination =  'iso3c')
 maps=as_tibble(maps)
-reg <- left_join(maps,witchtools::region_mappings$maxiso3) %>% rename(n=maxiso3)
+reg <- left_join(maps,region_mapping) %>% rename(n=maxiso3sai)
 
 countries_map <- reg %>% 
   filter(iso3!="ATA") %>%
@@ -143,8 +154,23 @@ countries_map <- reg %>%
   mutate(latitude=case_when((latitude==15 | n=="ind") & n!="bra"  ~ "Tropical",
                             latitude==0 | n=="bra" ~ "Equatorial",
                             latitude==30 ~ "Subtropical",
-                            latitude %in% c(45,60,75) ~ "High latitudes")) %>%
-  mutate(latitude=ordered(latitude,c("Equatorial","Tropical","Subtropical","High latitudes")))
+                            latitude==45 ~ "Mid latitudes",
+                            latitude %in% c(60,75) ~ "High latitudes")) %>%
+  mutate(latitude=ordered(latitude,
+                          c("Equatorial",
+                            "Tropical",
+                            "Subtropical",
+                            "Mid latitudes",
+                            "High latitudes"))) %>%
+  inner_join(inner_join(pop %>% filter(t==2) %>% rename(pop=value),
+                ykali %>% filter(t==2) %>% rename(gdp=value)) %>% 
+  mutate(gdpc=gdp/pop*1e6) %>%
+  select(n,gdpc) %>% unique() %>%
+  group_by(n) %>% 
+  summarise(income_bracket=case_when(gdpc < 1135 ~ "Low",
+                             gdpc >= 1135 & gdpc< 4495 ~ "Low-middle",
+                             gdpc >= 4495 & gdpc < 13935~ "Middle",
+                             gdpc >= 13935 ~ "High")) )
 
 regpalette_srm <- c("Mitigation + SAI"="#121B54",
                     "Mitigation"="#00A36C",
@@ -180,8 +206,8 @@ gdploss <- Y %>%
   full_join(YGROSS %>% rename(ykali=value)) %>%
   mutate(value=(ykali-value)/ykali )  %>%
   inner_join(sanitized_names) %>%
-  group_by(t,n,impacts,trade) %>%
-  mutate(valuerel=(value-value[nsrm=="Cooperative" & COOP=="coop"])*100 )
+  group_by(t,n,impacts,ci_imp) %>%
+  mutate(valuerel=(value-value[nsrm=="Cooperative" & COOP=="coop"])/(value[nsrm=="no SRM" & COOP=="coop"]-value[nsrm=="Cooperative" & COOP=="coop"]) )
 
 gdploss_g <- Y %>%
   full_join(YGROSS %>% rename(ykali=value)) %>%
@@ -218,9 +244,9 @@ land_temp_nogeong <- TATM %>%
   group_by(file,t) %>%
   summarise(value=weighted.mean(alpha_temp+beta_temp*value,area))
 
-sec_data <- gdx('C:/Users/pietr/OneDrive - Politecnico di Milano/RICE50/RICE50x/data_maxiso3sai/data_baseline.gdx')
-climate_regional_data <- gdx('C:/Users/pietr/OneDrive - Politecnico di Milano/RICE50/RICE50x/data_maxiso3sai/data_mod_climate_regional.gdx')
-sai_regional_data <- gdx('C:/Users/pietr/OneDrive - Politecnico di Milano/RICE50/RICE50x/data_maxiso3sai/data_mod_sai.gdx')
+sec_data <- gdx('../data_maxiso3sai/data_baseline.gdx')
+climate_regional_data <- gdx('../data_maxiso3sai/data_mod_climate_regional.gdx')
+sai_regional_data <- gdx('../data_maxiso3sai/data_mod_sai.gdx')
 
 clim <- climate_regional_data["climate_region_coef_cmip6_area"]
 pop2 <- sec_data["ssp_l"] %>% filter(V1=="ssp2") %>% mutate(t=as.numeric(t)) %>% rename(pop2=value,ssp=V1)
@@ -236,17 +262,13 @@ base_temp <- get_witch("impact_clivars")  %>%
   pivot_wider(names_from="V2") %>% 
   mutate(temp0=base_temp) %>% select(n,temp0)
 optimal_temp <- get_witch("impact_coef")  %>%
-  pivot_wider(names_from="coefs") %>%  select(-n) %>%
+  pivot_wider(names_from="coefs",values_fill = 0) %>%  select(-n) %>%
   full_join(get_witch("impact_clivars")  %>%
-  pivot_wider(names_from="V2")) %>%
+  pivot_wider(names_from="V2",values_fill = 0)) %>%
   mutate(opttemp=(TM-2*dev_TM_all_2*base_temp/sd_temp^2)/-(2*(TM_2+dev_TM_all_2/sd_temp^2)) ) 
-#  mutate(opttemp=TM/-(2*TM_2) )
-#   mutate(opttemp=base_temp)
 optimal_prec <- get_witch("impact_coef")  %>%
-  pivot_wider(names_from="coefs") %>%  select(-n) %>%
+  pivot_wider(names_from="coefs",values_fill = 0) %>%  select(-n) %>%
   full_join(get_witch("impact_clivars")  %>%
-              pivot_wider(names_from="V2")) %>%
-  mutate(optprec=((RR-2*dev_RR_all_2*base_precip/1000/(sd_prec/1000)^2)/-(2*(RR_2+dev_RR_all_2/(sd_prec/1000)^2)) ) / (base_precip / 1000) )
-#  mutate(opttemp=RR/-(2*RR_2) )
-#  mutate(optprec=base_precip)
+              pivot_wider(names_from="V2",values_fill = 0)) %>%
+mutate(optprec=((RR-2*dev_RR_all_2*base_precip/1000/(sd_prec/1000)^2)/-(2*(RR_2+dev_RR_all_2/(sd_prec/1000)^2)) ) / (base_precip / 1000) )
 
