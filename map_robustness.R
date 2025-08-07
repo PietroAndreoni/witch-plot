@@ -15,32 +15,22 @@ gdploss_imp <- y_impacts %>%
   inner_join(sanitized_names_imp) %>%
   filter(ttoyear(t)==2100) %>%
   complete(t,n,impacts,ci_imp,COOP,nsrm) %>%
-  filter(!(COOP=="coop" & !nsrm %in% c("Cooperative","no SRM") ) & !(COOP=="noncoop" & nsrm=="no SRM") ) %>%
+  filter(!(COOP=="coop" & !nsrm %in% c("Cooperative","no SRM") ) ) %>%
   group_by(t,n,impacts,ci_imp) %>% 
   mutate(valuerel=(value-value[nsrm=="Cooperative" & COOP=="coop"])/(value[nsrm=="no SRM" & COOP=="coop"]-value[nsrm=="Cooperative" & COOP=="coop"]) )
 
-gdploss_lat_imp <- y_impacts %>%
-  full_join(ygross_impacts %>% rename(ykali=value)) %>%
-  inner_join(countries_map) %>%
-  group_by(t,file,latitude) %>% 
-  summarise(value=(sum(ykali)-sum(value))/sum(ykali) )  %>%
-  ungroup() %>% 
+ranks_imp <-  gdploss_imp %>% 
   inner_join(sanitized_names_imp) %>%
   filter(ttoyear(t)==2100) %>%
-  complete(t,latitude,impacts,ci_imp,COOP,nsrm) %>%
-  filter(!(COOP=="coop" & !nsrm %in% c("Cooperative","no SRM") ) & !(COOP=="noncoop" & nsrm=="no SRM") ) %>%
-  group_by(t,latitude,impacts,ci_imp) %>% 
-  mutate(valuerel=(value-value[nsrm=="no SRM" & COOP=="coop"])*100 )
-
-ranks_imp <- gdploss_imp %>% 
   inner_join(countries_map) %>%
-  group_by(n,impacts) %>%
-  mutate(valueerel=-100*(value-value[nsrm=="Cooperative" & COOP=="coop"]) /(value[nsrm=="Cooperative" & COOP=="coop"]-value[nsrm=="no SRM" & COOP=="coop"])) %>%
-  filter(!nsrm %in% c("no SRM","Cooperative") ) %>%
-  ungroup() %>% 
-  mutate(disc=arules::discretize(valueerel,method="fixed",
-                                 breaks=c(-10000000,0,100,1000000000),
-                                 labels=c("Laissez-faire","Push to cooperation","Non-use")))
+  group_by(t,n,impacts,ci_imp) %>%
+  mutate(valuerel1=(value-value[nsrm=="no SRM" & COOP=="noncoop"]),
+         valuerel2=(value-value[nsrm=="no SRM" & COOP=="coop"]),
+         valuerel3=(value-value[nsrm=="Cooperative" & COOP=="coop"]) ) %>%
+  mutate(disc = case_when(valuerel3 < 0 ~ "Laissez-faire",
+                          valuerel3 > 0 & valuerel2 < 0 ~ "Push to cooperation",
+                          valuerel2 > 0 & valuerel1 < 0 ~ "Push to mitigation",
+                          valuerel1 > 0 ~ "Non-use") ) 
 
 max_impacts <- 5*5
 freedrivers <- 4
@@ -96,10 +86,31 @@ injections <- z_sai_impacts %>%
   summarise(bar=weighted.mean(injton(inj),value), sd=sqrt(Hmisc::wtd.var(injton(inj),value)), ninj=n()  ) %>%
   pivot_longer(c(bar,sd,ninj))
 
-ggplot(injections) +
-  geom_density(aes(x=value,color=Scenario),fill=NA,linewidth=1.5) +
-  scale_color_manual(values=regpalette_srm) +
-  facet_wrap(name~.,scales="free") #+ ylim(c(0,1))
+ggplot(injections %>% pivot_wider) +
+  geom_vline(xintercept=c(-45,-30,-15,0,15,30,45),color="grey") +
+  geom_segment(data=.%>% mutate(Scenario=as.factor(Scenario)) %>%
+                 group_by(Scenario) %>%
+                 summarise(nscen=as.numeric(Scenario)/300,
+                           xmin=mean(bar,na.rm=TRUE)-mean(sd,na.rm=TRUE),
+                           xmax=mean(bar,na.rm=TRUE)+mean(sd,na.rm=TRUE),
+                           ninj=round(median(ninj))),
+               aes(x=xmin,
+                   xend=xmax,
+                   y=-0.02+nscen,yend=-0.02+nscen,
+                   color=Scenario),linewidth=1) +
+  geom_text(data=.%>% mutate(Scenario=as.factor(Scenario)) %>%
+              group_by(Scenario) %>%
+              summarise(nscen=as.numeric(Scenario)/300,
+                        xmin=mean(bar,na.rm=TRUE)-mean(sd,na.rm=TRUE),
+                        xmax=mean(bar,na.rm=TRUE)+mean(sd,na.rm=TRUE),
+                        ninj=round(median(ninj))),
+            aes(x=xmin-2,y=-0.02+nscen,label=ninj,color=Scenario)) +
+  geom_vline(data=.%>% 
+               group_by(Scenario) %>%
+               summarise(med=mean(bar,na.rm=TRUE)),
+             aes(xintercept=med,color=Scenario), linewidth=0.5, linetype=2 ) +
+  geom_density(aes(x=bar,color=Scenario,weight=impton[ci_imp]),fill=NA,linewidth=1.5) +
+    scale_color_manual(values=regpalette_srm) + theme(legend.position = "none")
 
 impton <- c("hi"=0.05,"lo"=0.05,"mhi"=0.33,"mlo"=0.33,"best"=0.5)
 ggplot(gdploss_imp %>%        
