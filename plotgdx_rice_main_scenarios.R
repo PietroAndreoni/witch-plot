@@ -8,8 +8,8 @@ reg_id = "maxiso3sai" #for historical data folder
 year0 = 2015
 tstep = 5
 
-restrict_files = c("results_") #to all scenarios matching partly at least one of its arguments
-exclude_files = c("INJsovereign","INJsymmetric")
+restrict_files = c("INJsymmetric_","INJfree_") #to all scenarios matching partly at least one of its arguments
+exclude_files = c("IMPbhmbest_")
 removepattern = c("")
 
 yearmin = 1980
@@ -49,7 +49,7 @@ sanitize <- function(.x) {
   mutate(nsrm=case_when(nsrm=="brics"~"BRICS",
                    nsrm=="sc"~"UN Security Council",
                    nsrm=="scbrics"~"UN Security Council and BRICS",
-                   nsrm=="wp"~"Major Powers",
+                   nsrm=="wp"~"Cooperative",
                    nsrm=="usa"~"USA",
                    nsrm=="ind"~"India",
                    nsrm=="idn"~"Indonesia",
@@ -72,13 +72,26 @@ sanitize <- function(.x) {
          ci_imp=str_extract(str_remove(impacts,"bhmspec|bhmtspec|bhmpspec|spec|bhm"),"best|mlo|mhi|lo|hi"),
          ci_p=str_extract(scenprec,"best|obs|lo|up"),
          ci_t=str_extract(scentemp,"best|obs|lo|up"),
+         pers_t=str_extract(scentemp,"\\d+\\.?\\d*"),
+         pers_p=str_extract(scenprec,"\\d+\\.?\\d*"),
          impacts=str_extract(impacts,"bhmspec|bhmtspec|bhmpspec|spec|bhm"),
-         scenprec=str_extract(scenprec,"area|pop"),
-         scenprec=str_extract(scentemp,"area|pop")) %>%
+         dsc_p=str_extract(scenprec,"area|pop"),
+         dsc_t=str_extract(scentemp,"area|pop")) %>% select(-scentemp,-scenprec) %>%
     mutate(Scenario=case_when(nsrm=="no SRM" & COOP=="coop" ~ "Mitigation",
                             nsrm=="Cooperative" & COOP=="coop" ~ "Mitigation + SAI",
                             nsrm=="no SRM" & COOP=="noncoop" ~ "Free-riding",
-                            .default=nsrm)) 
+                            .default=nsrm),
+           impacts=case_when(impacts=="bhm" ~ "BHM",
+                             impacts=="bhmspec" ~ "MAIN",
+                             impacts=="spec" ~ "SPEC",
+                             impacts=="bhm" ~ "BHM",
+                             impacts=="bhmpspec" ~ "BHM-P+SPEC",
+                             impacts=="bhmtspec" ~ "BHM-T+SPEC",
+                             impacts=="ada" ~ "ADA",
+                             impacts=="bhmada" ~ "BHM+ADA",
+                             .default=impacts),
+           pers_p=ifelse(is.na(pers_p) | pers_p==300, "inf", pers_p),
+           pers_t=ifelse(is.na(pers_t) | pers_t==300, "inf", pers_t ) ) 
 }
 
 injton <- function(.x) {
@@ -151,6 +164,7 @@ countries_map <- reg %>%
   summarise(minlat=min(lat),maxlat=max(lat),meanlat=mean(lat),
             minlong=min(long),maxlong=max(long),meanlong=mean(long) )%>%  
   mutate(latitude=abs(round(meanlat/15)*15) ) %>% 
+  mutate(hemishpere=ifelse(latitude<15,"Southern","Northern")) %>%
   mutate(latitude=case_when((latitude==15 | n=="ind") & n!="bra"  ~ "Tropical",
                             latitude==0 | n=="bra" ~ "Equatorial",
                             latitude==30 ~ "Subtropical",
@@ -206,21 +220,69 @@ gdploss <- Y %>%
   full_join(YGROSS %>% rename(ykali=value)) %>%
   mutate(value=(ykali-value)/ykali )  %>%
   inner_join(sanitized_names) %>%
-  group_by(t,n,impacts,ci_imp) %>%
-  mutate(valuerel=(value-value[nsrm=="Cooperative" & COOP=="coop"])/(value[nsrm=="no SRM" & COOP=="coop"]-value[nsrm=="Cooperative" & COOP=="coop"]) )
+  group_by_at(c("t","n",setdiff(colnames(sanitized_names),c("nsrm","COOP","Scenario","file","pathdir","zinj"))) ) %>%
+  mutate(valuerel_norm=(value-value[nsrm=="Cooperative" & COOP=="coop" & zinj=="free"])/(value[nsrm=="no SRM" & COOP=="coop" & zinj=="free"]-value[nsrm=="Cooperative" & COOP=="coop" & zinj=="free"]),
+         valuerel_saicoop=(value-value[nsrm=="Cooperative" & COOP=="coop" & zinj=="free"]),
+         valuerel_paris=(value-value[nsrm=="no SRM" & COOP=="coop" & zinj=="free"]))
 
 gdploss_g <- Y %>%
   full_join(YGROSS %>% rename(ykali=value)) %>%
   group_by(file,t) %>%
   summarise(value=sum(ykali-value)/sum(ykali) )  %>%
   inner_join(sanitized_names) %>%
-  group_by(t,impacts,trade) %>%
-  mutate(valuerel=(value-value[nsrm=="Cooperative" & COOP=="coop"])*100 ) 
+  group_by_at(c("t",setdiff(colnames(sanitized_names),c("nsrm","COOP","Scenario","file","pathdir","zinj"))) ) %>%
+  mutate(valuerel=(value-value[nsrm=="Cooperative" & COOP=="coop" & zinj=="free"])/(value[nsrm=="no SRM" & COOP=="coop" & zinj=="free"]-value[nsrm=="Cooperative" & COOP=="coop" & zinj=="free"]),
+         valuerel2=(value-value[nsrm=="no SRM" & COOP=="coop" & zinj=="free"])  ) 
 
 damfrac_g <- DAMAGES %>%
   full_join(YGROSS %>% rename(ykali=value)) %>%
   group_by(file,t) %>%
   summarise(value=sum(value)/sum(ykali) ) 
+
+abatefrac <- get_witch("ABATECOST") %>%
+  group_by(file,t,n) %>%
+  summarise(value=sum(value)) %>%
+  inner_join(YGROSS %>% rename(ykali=value)) %>%
+  mutate(value = value/ykali,source="ab") %>%
+  select(file,n,value,source,t) %>%
+  complete()
+
+abatefrac_g <- get_witch("ABATECOST") %>%
+  group_by(file,t,n) %>%
+  summarise(value=sum(value)) %>%
+  inner_join(YGROSS %>% rename(ykali=value)) %>%
+  group_by(file,t) %>%
+  summarise(value=sum(value),ykali=sum(ykali)) %>%
+  ungroup() %>%
+  mutate(value = value/ykali,source="ab") 
+
+saifrac <- get_witch("COST_SAI") %>%
+  group_by(file,t,n) %>%
+  summarise(value=sum(value)) %>%
+  inner_join(YGROSS %>% rename(ykali=value)) %>%
+  mutate(value = value/ykali,source="sai") %>%
+  select(file,n,value,source,t) %>%
+  complete()
+
+perc_impact <- get_witch("damfrac_type") %>%
+  mutate(source=case_when(str_detect(d,"temp")~"temp",
+                          str_detect(d,"prec")~"prec",
+                          str_detect(d,"spill")~"spill",
+                          .default="others")) %>%
+  group_by(t,n,file,source) %>%
+  summarise(value=sum(value)) %>%
+  ungroup() %>%
+  bind_rows(abatefrac) %>%
+  bind_rows(saifrac) %>%
+  filter(ttoyear(t)==2100) %>%
+  group_by(file,n,t) %>%
+  mutate(perc=value/sum(value)) %>% 
+  complete() %>%
+  group_by(file,t,n) %>%
+  mutate(Main_source=case_when(perc[source=="temp"]>0.75~"temp",
+                               perc[source=="prec"]>0.75~"prec",
+                               perc[source=="ab"]>0.75~"ab",
+                               .default="mixed"))
 
 brackets <- damfrac_type %>%
   pivot_longer(c(ab,temp,prec),names_to="type") %>%
@@ -257,10 +319,10 @@ sd_prec <- get_witch("impact_clivars")  %>%
   select(n,sd) %>% unique()
 base_prec <- get_witch("impact_clivars")  %>%
   pivot_wider(names_from="V2") %>% 
-  mutate(prec0=base_precip/1000) %>% select(n,prec0)
+  mutate(prec0=base_precip/1000) %>% select(n,prec0)%>% unique()
 base_temp <- get_witch("impact_clivars")  %>%
   pivot_wider(names_from="V2") %>% 
-  mutate(temp0=base_temp) %>% select(n,temp0)
+  mutate(temp0=base_temp) %>% select(n,temp0) %>% unique()
 optimal_temp <- get_witch("impact_coef")  %>%
   pivot_wider(names_from="coefs",values_fill = 0) %>%  select(-n) %>%
   full_join(get_witch("impact_clivars")  %>%
@@ -270,5 +332,5 @@ optimal_prec <- get_witch("impact_coef")  %>%
   pivot_wider(names_from="coefs",values_fill = 0) %>%  select(-n) %>%
   full_join(get_witch("impact_clivars")  %>%
               pivot_wider(names_from="V2",values_fill = 0)) %>%
-mutate(optprec=((RR-2*dev_RR_all_2*base_precip/1000/(sd_prec/1000)^2)/-(2*(RR_2+dev_RR_all_2/(sd_prec/1000)^2)) ) / (base_precip / 1000) )
+mutate(optprec=((RR-2*dev_RR_all_2*base_precip/1000/(sd_prec/1000)^2)/-(2*(RR_2+dev_RR_all_2/(sd_prec/1000)^2)) ) )
 

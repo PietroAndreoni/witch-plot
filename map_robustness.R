@@ -29,7 +29,7 @@ ranks_imp <-  gdploss_imp %>%
          valuerel3=(value-value[nsrm=="Cooperative" & COOP=="coop"]) ) %>%
   mutate(disc = case_when(valuerel3 < 0 ~ "Laissez-faire",
                           valuerel3 > 0 & valuerel2 < 0 ~ "Push to cooperation",
-                          valuerel2 > 0 & valuerel1 < 0 ~ "Push to mitigation",
+                          valuerel2 > 0 & valuerel1 < 0 ~ "Non-use",
                           valuerel1 > 0 ~ "Non-use") ) 
 
 max_impacts <- 5*5
@@ -77,7 +77,8 @@ ggsave("agrement_maps.png",damages_maps,width=18,height=9)
 
 z_sai_impacts <- gdxtools::batch_extract("Z_SAI",
                                      files=paste0("../Results_secondround/Impacts/",list.files(path="../Results_secondround/Impacts",pattern="results_")))$Z_SAI %>%
-  mutate(file=str_remove_all(gdx,"../Results_secondround/Impacts/|.gdx")) %>% select(-gdx) %>% as_tibble()
+  mutate(file=str_remove_all(gdx,"../Results_secondround/Impacts/|.gdx"),
+         t=as.numeric(t)) %>% select(-gdx) %>% as_tibble()
 
 injections <- z_sai_impacts %>% 
   inner_join(sanitized_names_imp) %>%
@@ -86,13 +87,43 @@ injections <- z_sai_impacts %>%
   summarise(bar=weighted.mean(injton(inj),value), sd=sqrt(Hmisc::wtd.var(injton(inj),value)), ninj=n()  ) %>%
   pivot_longer(c(bar,sd,ninj))
 
+
+ggplot(injections %>% pivot_wider() %>% filter(Scenario=="Mitigation + SAI")) +
+  geom_point(aes(x=impacts,y=bar,color=ci_imp))
+
+
+preferred_strategy <- z_sai_impacts %>% 
+  inner_join(sanitized_names_imp) %>%
+  group_by(t,Scenario,impacts,ci_imp) %>% 
+  filter(t==18 & Scenario!="Mitigation" & value>0.05*sum(value)) %>%
+  group_by(t,Scenario,impacts,ci_imp) %>% 
+  summarise(strategy=paste0(inj,collapse="+")) %>% 
+  group_by(t,Scenario,impacts,strategy) %>% 
+  mutate(n=n()) %>%   
+  group_by(t,impacts,Scenario) %>% 
+  filter(n==max(n)) %>% 
+  select(Scenario,impacts,strategy,n) %>%  
+  unique()
+
+preferred_strategy <- z_sai_impacts %>% 
+  inner_join(sanitized_names_imp) %>%
+  group_by(t,Scenario,impacts,ci_imp) %>% 
+  filter(t==18 & Scenario!="Mitigation" & value>0 & !is.na(value)) %>%
+  mutate(emishpere=sign(injton(inj)) ) %>% 
+  group_by(t,Scenario,impacts,ci_imp) %>% 
+  mutate(tot=sum(value)) %>%   
+  group_by(t,Scenario,impacts,ci_imp,emishpere) %>% 
+  summarise(perc=sum(value)/mean(tot)) %>% 
+  group_by(t,Scenario,impacts,ci_imp) %>% 
+  filter(perc==max(perc))
+
 ggplot(injections %>% pivot_wider) +
   geom_vline(xintercept=c(-45,-30,-15,0,15,30,45),color="grey") +
   geom_segment(data=.%>% mutate(Scenario=as.factor(Scenario)) %>%
                  group_by(Scenario) %>%
                  summarise(nscen=as.numeric(Scenario)/300,
-                           xmin=mean(bar,na.rm=TRUE)-mean(sd,na.rm=TRUE),
-                           xmax=mean(bar,na.rm=TRUE)+mean(sd,na.rm=TRUE),
+                           xmin=median(bar,na.rm=TRUE)-mean(sd,na.rm=TRUE),
+                           xmax=median(bar,na.rm=TRUE)+mean(sd,na.rm=TRUE),
                            ninj=round(median(ninj))),
                aes(x=xmin,
                    xend=xmax,
@@ -101,32 +132,33 @@ ggplot(injections %>% pivot_wider) +
   geom_text(data=.%>% mutate(Scenario=as.factor(Scenario)) %>%
               group_by(Scenario) %>%
               summarise(nscen=as.numeric(Scenario)/300,
-                        xmin=mean(bar,na.rm=TRUE)-mean(sd,na.rm=TRUE),
-                        xmax=mean(bar,na.rm=TRUE)+mean(sd,na.rm=TRUE),
+                        xmin=median(bar,na.rm=TRUE)-mean(sd,na.rm=TRUE),
+                        xmax=median(bar,na.rm=TRUE)+mean(sd,na.rm=TRUE),
                         ninj=round(median(ninj))),
             aes(x=xmin-2,y=-0.02+nscen,label=ninj,color=Scenario)) +
   geom_vline(data=.%>% 
                group_by(Scenario) %>%
-               summarise(med=mean(bar,na.rm=TRUE)),
+               summarise(med=median(bar,na.rm=TRUE)),
              aes(xintercept=med,color=Scenario), linewidth=0.5, linetype=2 ) +
   geom_density(aes(x=bar,color=Scenario,weight=impton[ci_imp]),fill=NA,linewidth=1.5) +
-    scale_color_manual(values=regpalette_srm) + theme(legend.position = "none")
+    scale_color_manual(values=regpalette_srm) + theme(legend.position = "none") +  facet_grid(Scenario~.) 
 
 impton <- c("hi"=0.05,"lo"=0.05,"mhi"=0.33,"mlo"=0.33,"best"=0.5)
 ggplot(gdploss_imp %>%        
-       inner_join(pop %>% select(t,n,value) %>% rename(pop=value)) %>% 
+       inner_join(pop %>% select(t,n,value) %>% rename(pop=value)%>% unique()) %>% 
          inner_join(countries_map) %>% 
+         inner_join(preferred_strategy) %>%
          filter(ttoyear(t)==2100 & !Scenario %in% c("Mitigation","Mitigation + SAI","Free-riding")) %>% 
-         ungroup() %>% filter(!is.na(valuerel) & valuerel<=quantile(valuerel,0.95,na.rm=TRUE) & valuerel>=quantile(valuerel,0.05,na.rm=TRUE))
-       )+
+         ungroup() %>% 
+         filter(!is.na(valuerel) & valuerel<=quantile(valuerel,0.95,na.rm=TRUE) & valuerel>=quantile(valuerel,0.05,na.rm=TRUE)))+
   geom_vline(xintercept=0,linetype=2,color="grey") +
   geom_vline(xintercept=1,linetype=3,color="grey") +
 ggridges::geom_density_ridges(aes(x = valuerel, y = latitude, color=latitude,weight=pop*impton[ci_imp]),
                                 rel_min_height = 0.005,fill=NA,
                                 quantile_lines = TRUE, 
                               jittered_points = TRUE,
-                              position = position_points_jitter(width = 0.05, height = 0),
+                              position = ggridges::position_points_jitter(width = 0.05, height = 0),
                               point_shape = '|', point_size = 1, point_alpha = 0.7) +
-  ylab('') + xlab(' (SCEN - MITIGATION)/(FREE-RIDING - MITIGATION)') +
-  facet_grid(Scenario~.) + 
+  ylab('') + xlab(' (SCEN - COOP)/(MITIGATION - COOP)') +
+#  facet_grid(as.factor(emishpere)~.) + 
   coord_cartesian(xlim=c(-1,3))

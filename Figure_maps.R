@@ -6,7 +6,7 @@ temperature_maps <- TEMP %>%
   inner_join(optimal_temp) %>%
   group_by(n) %>%
   mutate(temp=temp-opttemp) %>%
-  filter(ttoyear(t)==2100 & impacts!="bhm" & !Scenario %in% c("Mitigation","Free-riding") ) %>% 
+  filter(ttoyear(t)==2100 & impacts!="bhm" & Scenario %in% c("Mitigation","Mitigation + SAI","USA","India") ) %>% 
   inner_join(countries_map) %>% 
   left_join(reg %>% filter(iso3!='ATA')) %>% 
   ggplot() +
@@ -16,7 +16,7 @@ temperature_maps <- TEMP %>%
   geom_point(data=Z_SAI %>% 
                inner_join(sanitized_names) %>%
                mutate(ninj=ifelse(str_detect(inj,"S"),- as.numeric(str_remove(inj,"S")), as.numeric(str_remove(inj,"N") ))) %>%
-               filter(ttoyear(t)==2100& impacts!="bhm" & !Scenario %in% c("Mitigation","Free-riding") & value != 0),
+               filter(ttoyear(t)==2100 & impacts!="bhm" & Scenario %in% c("Mitigation","Mitigation + SAI","USA","India") & value != 0),
              aes(x=-170, y = ninj, size= value ), shape=21, color="red", fill=NA ) +
   scale_fill_gradient2() +
   theme_void()+ 
@@ -27,7 +27,7 @@ temperature_maps <- TEMP %>%
 
 precipitation_maps <- PREC %>% rename(prec=value) %>% 
   inner_join(sanitized_names) %>%
-  filter(ttoyear(t)==2100 & impacts!="bhm" & !Scenario %in% c("Mitigation","Free-riding")) %>%
+  filter(ttoyear(t)==2100 & impacts!="bhm" & Scenario %in% c("Mitigation","Mitigation + SAI","USA","India")) %>%
   inner_join(countries_map) %>% 
   inner_join(sd_prec) %>%
   inner_join(optimal_prec) %>%
@@ -39,13 +39,13 @@ precipitation_maps <- PREC %>% rename(prec=value) %>%
   geom_point(data=Z_SAI %>% 
                inner_join(sanitized_names) %>%
                mutate(ninj=ifelse(str_detect(inj,"S"),- as.numeric(str_remove(inj,"S")), as.numeric(str_remove(inj,"N") ))) %>%
-               filter(ttoyear(t)==2100 & impacts!="bhm" & !Scenario %in% c("Mitigation","Free-riding") & value != 0),
+               filter(ttoyear(t)==2100 & impacts!="bhm" & Scenario %in% c("Mitigation","Mitigation + SAI","USA","India") & value != 0),
              aes(x=-170, y = ninj, size= value ), shape=21, color="red", fill=NA ) +
   scale_fill_gradient2() +
   theme_void()+ 
   guides(size = FALSE) +
   theme(panel.background = element_rect(fill="white",color="white"),legend.position = "top") +
-  facet_grid(ordered(Scenario,c("Mitigation + SAI","China","USA","Brazil","India"))~impacts)
+  facet_grid(ordered(Scenario,c("Mitigation","Mitigation + SAI","China","USA","Brazil","India"))~impacts)
 
 fig_maps <- ggarrange(temperature_maps,precipitation_maps, nrow=2, labels = c("a","b"))
 ggsave("fig_maps.png",plot=fig_maps,width=18, height=10, units="cm")
