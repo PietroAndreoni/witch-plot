@@ -1,16 +1,18 @@
 ###### 
-emulator_data <- gdx('C:/Users/pietr/OneDrive - Politecnico di Milano/RICE50/RICE50x/data_maxiso3sai/data_mod_sai.gdx')
+emulator_data <- gdx('../data_maxiso3sai/data_mod_sai.gdx')
 temp  <- emulator_data["srm_temperature_response_area"] %>% 
   mutate(w="area") %>%
-  bind_rows(emulator_data["srm_temperature_response_pop"] %>%
-  mutate(w="pop")) %>%
+  bind_rows(emulator_data["srm_temperature_response_area"] %>%
+  as_tibble() %>% 
+  mutate(w="area")) %>%
   rename(inj=V2,se=V3) %>% 
   mutate(inj_lat=ifelse(str_detect(inj,"S"),as.numeric(paste0("-",str_remove(inj,"S"))),as.numeric(str_remove(inj,"N")))  ) %>%
   inner_join(countries_map)
 prec  <- emulator_data["srm_precip_response_area"] %>% 
   mutate(w="area") %>%
-  bind_rows(emulator_data["srm_precip_response_pop"] %>%
-              mutate(w="pop")) %>%
+  bind_rows(emulator_data["srm_precip_response_area"] %>%
+              mutate(w="area")) %>%
+  as_tibble() %>% 
   rename(inj=V2,se=V3) %>% 
   mutate(inj_lat=ifelse(str_detect(inj,"S"),as.numeric(paste0("-",str_remove(inj,"S"))),as.numeric(str_remove(inj,"N")))  ) %>%
   inner_join(countries_map)
@@ -39,17 +41,18 @@ reaction_t_srm <- cross_join(clim %>%
 
 f1a <- ggplot(temp %>% filter(inj_lat %in% c(-30,0,30) ) ) +
   geom_point(data=.%>%
-               filter(se=="best" & w=="area"),
+               filter(se=="obs" & w=="area"),
              aes(x=meanlat,
                  y=value,
                  color=as.factor(inj_lat)),
-             alpha=0.2) +
-  geom_errorbar(data=.%>% group_by(n,inj_lat) %>% summarise(meanlat=mean(meanlat),lo=min(value),up=max(value)),
-                  aes(x=meanlat, 
-                    ymin=lo,
-                    ymax=up,
-                    color=as.factor(inj_lat)),
-                alpha=0.2) +
+             alpha=0.2) +  
+  geom_hline(yintercept=0,color="grey80",linewidth=1) +
+  # geom_errorbar(data=.%>% group_by(n,inj_lat) %>% summarise(meanlat=mean(meanlat),lo=min(value),up=max(value)),
+  #                 aes(x=meanlat, 
+  #                   ymin=lo,
+  #                   ymax=up,
+  #                   color=as.factor(inj_lat)),
+  #               alpha=0.2) +
   geom_point(data=unique(inner_join(reaction_t_srm %>% filter(inj_lat==0),temp %>% select(n,meanlat))),  
              aes(x=as.numeric(meanlat), y=t_eq ), 
              color="black", 
@@ -60,17 +63,20 @@ f1a <- ggplot(temp %>% filter(inj_lat %in% c(-30,0,30) ) ) +
                   y=value,
                   color=ordered(inj_lat,c(-60,-45,-30,-15,0,15,30,45,60))), 
               se = F, 
+              method = "loess",
               linewidth=2)+
-  geom_smooth(data=unique(inner_join(reaction_t_srm %>% filter(inj_lat==0),temp %>% select(n,meanlat))) %>%
+  geom_smooth(data=unique(inner_join(reaction_t_srm %>% filter(inj_lat==0),temp %>% filter(se=="obs" & w=="area") %>% select(n,meanlat))) %>%
                 inner_join(pop2020),  
               aes(x=as.numeric(meanlat), 
                   y=t_eq,
                   weight=pop2), 
               color="black", 
-              se = F, 
+              se = F,  
+              method = "loess",
               linetype="dotted", 
               linewidth=2 ) +
-  scale_color_viridis_d(name = "Injection latitude") + xlab("Average country latitude") + ylab("Cooling [°C]")
+  scale_color_viridis_d(name = "Injection latitude") + xlab("Average country latitude") + ylab("Cooling [°C]")+
+  coord_flip()
 
 ########################## precipitation response
 reaction_p_srm <- cross_join(clim %>% 
@@ -82,36 +88,36 @@ reaction_p_srm <- cross_join(clim %>%
 f1b <- ggplot(prec %>% inner_join(sd_prec) %>%
          filter(inj_lat %in% c(-30,0,30)) %>% 
          inner_join(unique(inner_join(reaction_p_srm,prec %>% select(n,meanlat)))) ) +
-  geom_hline(yintercept=0,color="grey",linewidth=1) +
+  geom_hline(yintercept=0,color="grey80",linewidth=1) +
   geom_ribbon(aes(x=meanlat,
               ymin=-1,
               ymax=1),
-              color="grey",
-              linewidth=1,
+              color="grey80",
+              linewidth=0.5,
               alpha=0.2) +
   geom_point(data=unique(inner_join(reaction_p_srm %>% filter(inj_lat==0),prec %>% select(n,meanlat))) %>% inner_join(sd_prec),  
              aes(x=as.numeric(meanlat), 
                  y=p_eq/sd ), 
              color="black", 
              alpha=0.1) +
-  geom_point(data=.%>%filter(se=="best" & w=="area"),aes(x=meanlat,
+  geom_point(data=.%>%filter(se=="obs" & w=="area"),aes(x=meanlat,
                                              y=value/sd,
-                                             shape=w,
                                              color=ordered(inj_lat,c(-60,-45,-30,-15,0,15,30,45,60))),alpha=0.2) +
-  geom_errorbar(data=.%>% group_by(n,inj_lat) %>% 
-                  summarise(meanlat=mean(meanlat),lo=min(value),up=max(value), sd=mean(sd)) %>%
-                  rowwise() %>% mutate(lo=max(-3.5,lo/sd),up=min(3.5,up/sd)),
-                aes(x=meanlat,
-                    ymin=lo,
-                    ymax=up,
-                    color=ordered(inj_lat,c(-60,-45,-30,-15,0,15,30,45,60))),alpha=0.2) +
-  geom_smooth(data=unique(inner_join(reaction_p_srm %>% filter(inj_lat==0),prec %>% filter(se=="best" & w=="area") %>% select(n,meanlat))) %>% 
+  # geom_errorbar(data=.%>% group_by(n,inj_lat) %>% 
+  #                 summarise(meanlat=mean(meanlat),lo=min(value),up=max(value), sd=mean(sd)) %>%
+  #                 rowwise() %>% mutate(lo=max(-3.5,lo/sd),up=min(3.5,up/sd)),
+  #               aes(x=meanlat,
+  #                   ymin=lo,
+  #                   ymax=up,
+  #                   color=ordered(inj_lat,c(-60,-45,-30,-15,0,15,30,45,60))),alpha=0.2) +
+  geom_smooth(data=unique(inner_join(reaction_p_srm %>% filter(inj_lat==0),prec %>% filter(se=="obs" & w=="area") %>% select(n,meanlat))) %>% 
                 inner_join(sd_prec)%>%
                 inner_join(pop2020),  
               aes(x=as.numeric(meanlat), 
                   y=p_eq/sd ), 
               color="black", 
               se = F, 
+              method = "loess",
               linetype="dotted", 
               linewidth=2) +
   geom_smooth(data=.%>%
@@ -120,21 +126,21 @@ f1b <- ggplot(prec %>% inner_join(sd_prec) %>%
                   y=value/sd,
                   color=ordered(inj_lat,c(-60,-45,-30,-15,0,15,30,45,60))),
               se = F,
+              method = "loess",
               linewidth=2) +
 #  ylim(c(-3.51,+3.51)) +
   scale_color_viridis_d() +
-  scale_color_viridis_d(name = "Injection latitude") + xlab("Average country latitude") + ylab("Variation of average daily precipitation [standard deviations]")
+  scale_color_viridis_d(name = "Injection latitude") + xlab("") + ylab("Precipitation variation [SD]") +
+  coord_flip()
 
 f1 <- ggarrange(f1a,f1b,nrow=1,common.legend = TRUE,labels=c("a","b"))
 ggsave("Injection.png",plot=f1,dpi=320,width=18,height=9,units="cm")
 
 
 model_agreement_prec <- prec %>% 
-  inner_join(sd_prec) %>%
-  group_by(n,inj,w) %>% summarise(agr=n_distinct(sign(value))) %>%
+  group_by(n,inj) %>% summarise(agr=n_distinct(sign(value))) %>%
   ungroup() %>% mutate(agr=ifelse(agr==1,1,0)) %>%
-  complete(agr) %>%
-  group_by(n,inj) %>% summarise(agr=paste0(sum(agr),"/2"))
+  complete(agr) 
 
 inj_prec <- ggplot(prec %>% 
                      group_by(n,inj_lat) %>%
@@ -170,3 +176,5 @@ inj_temp <- ggplot(temp %>%
   facet_wrap(ordered(inj,c("60N","45N","30N","15N","0","15S","30S","45S","60S"))~.,) + 
   scale_fill_gradient2(name="Temperature variation °C")
 ggsave("SI_injtemp.png",plot=inj_temp,dpi=320,width=18,height=18,units="cm")
+
+  

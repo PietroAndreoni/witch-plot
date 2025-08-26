@@ -1,5 +1,5 @@
 rm(list = ls())
-main_folder = "../Results_secondround/Main" #Where you're RICE/DICE/RICE50x code is located
+main_folder = "../Results_secondround/Injection" #Where you're RICE/DICE/RICE50x code is located
 witch_folder = main_folder #Where you're RICE/DICE/RICE50x code is located
 subdir = c("") #can be multiple directories
 gdxtools::igdx("/Library/Frameworks/GAMS.framework/Resources/")
@@ -8,8 +8,8 @@ reg_id = "maxiso3sai" #for historical data folder
 year0 = 2015
 tstep = 5
 
-restrict_files = c("INJsymmetric_","INJfree_") #to all scenarios matching partly at least one of its arguments
-exclude_files = c("IMPbhmbest_")
+restrict_files = c("") #to all scenarios matching partly at least one of its arguments
+exclude_files = c("IMPbhmbest_","IMPspecbest_")
 removepattern = c("")
 
 yearmin = 1980
@@ -231,8 +231,10 @@ gdploss_g <- Y %>%
   summarise(value=sum(ykali-value)/sum(ykali) )  %>%
   inner_join(sanitized_names) %>%
   group_by_at(c("t",setdiff(colnames(sanitized_names),c("nsrm","COOP","Scenario","file","pathdir","zinj"))) ) %>%
-  mutate(valuerel=(value-value[nsrm=="Cooperative" & COOP=="coop" & zinj=="free"])/(value[nsrm=="no SRM" & COOP=="coop" & zinj=="free"]-value[nsrm=="Cooperative" & COOP=="coop" & zinj=="free"]),
-         valuerel2=(value-value[nsrm=="no SRM" & COOP=="coop" & zinj=="free"])  ) 
+  mutate(valuerel_norm=(value-value[nsrm=="Cooperative" & COOP=="coop" & zinj=="free"])/(value[nsrm=="no SRM" & COOP=="coop" & zinj=="free"]-value[nsrm=="Cooperative" & COOP=="coop" & zinj=="free"]),
+         valuerel_saicoop=(value-value[nsrm=="Cooperative" & COOP=="coop" & zinj=="free"]),
+         valuerel_paris=(value-value[nsrm=="no SRM" & COOP=="coop" & zinj=="free"]))
+
 
 damfrac_g <- DAMAGES %>%
   full_join(YGROSS %>% rename(ykali=value)) %>%
@@ -324,12 +326,12 @@ base_temp <- get_witch("impact_clivars")  %>%
   pivot_wider(names_from="V2") %>% 
   mutate(temp0=base_temp) %>% select(n,temp0) %>% unique()
 optimal_temp <- get_witch("impact_coef")  %>%
-  pivot_wider(names_from="coefs",values_fill = 0) %>%  select(-n) %>%
+  pivot_wider(names_from="coefs",values_fill = 0) %>%  select(-n) %>% unique() %>% 
   full_join(get_witch("impact_clivars")  %>%
   pivot_wider(names_from="V2",values_fill = 0)) %>%
   mutate(opttemp=(TM-2*dev_TM_all_2*base_temp/sd_temp^2)/-(2*(TM_2+dev_TM_all_2/sd_temp^2)) ) 
 optimal_prec <- get_witch("impact_coef")  %>%
-  pivot_wider(names_from="coefs",values_fill = 0) %>%  select(-n) %>%
+  pivot_wider(names_from="coefs",values_fill = 0) %>%  select(-n) %>% unique() %>% 
   full_join(get_witch("impact_clivars")  %>%
               pivot_wider(names_from="V2",values_fill = 0)) %>%
 mutate(optprec=((RR-2*dev_RR_all_2*base_precip/1000/(sd_prec/1000)^2)/-(2*(RR_2+dev_RR_all_2/(sd_prec/1000)^2)) ) )

@@ -1,5 +1,5 @@
 #main_scenarios_noncoop <- sanitized_names %>% filter(impacts!='bhm' & (zinj=="free" & !nsrm %in% c("Cooperative","no SRM")) | ((zinj=="free" & nsrm %in% c("Cooperative","no SRM")))  )
-#main_scenarios_noncoop <- sanitized_names %>% filter(zinj=="symmetric"  | (zinj=="free" & nsrm %in% c("no SRM"))  )
+main_scenarios_noncoop <- sanitized_names %>% filter(zinj=="symmetric"  | (zinj=="free" & nsrm %in% c("Cooperative","no SRM"))  )
 main_scenarios_noncoop <- sanitized_names 
 
 map <- countries_map %>%
@@ -89,22 +89,21 @@ damages_maps <- gdploss %>%
         y=-value*360, 
         fill=ordered(disc,c("Laissez-faire","Push to cooperation","Push to mitigation","Non-use","Non-use (strong)","NA"))),
           color="grey50",stat="identity",position="stack",width=10) +
-  scale_fill_manual(values=c("Laissez-faire"="#4575B4",
-                             "Push to cooperation"="white",
-                             "Non-use"="#c1121f",
+  scale_fill_manual(values=c("Laissez-faire"="#003049",
+                             "Push to cooperation"="#EFF0F2",
+                             "Non-use"="#C98C7E",
                              "Non-use (strong)"="#780000",
-                             "NA"="grey80"),
+                             "NA"="white"),
                     name="Preferred strategy") +
   scale_color_viridis_d() +
   theme_void()+ 
-  guides(color="none") +
-  facet_grid(impacts~nsrm,) +
-  theme(panel.background = element_rect(fill="white",color="white"),
-        legend.position = "top") +
+  guides(color="none",size="none") +
+  facet_wrap(nsrm~.,nrow=2) +
+  theme(legend.position = "top") +
   coord_flip() +
   theme(text = element_text(size = 12))
 
-ggsave("Fig_noncoop.png",damages_maps,width=18,height=12)
+ggsave("Fig_noncoop.png",damages_maps,width=18,height=12,units="cm")
 
 
 ggplot(gdploss %>%        
@@ -157,5 +156,5 @@ linewidth=2) +
   facet_wrap(impacts~.,nrow=1) +
   xlab("") + ylab("Local temperature variation rtm 1980-2018 [°C]") + 
   theme_pubr() + theme(legend.position = "none",
-                       text=element_text(size=7)) + coord_flip()
+                       text=element_text(size=12)) + coord_flip()
 

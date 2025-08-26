@@ -1,17 +1,15 @@
 main_scenarios_coop <- sanitized_names %>% 
-  filter(COOP=="coop" & impacts!="bhm" & zinj=="symmetric")
+  filter(COOP=="coop" & impacts!="bhm")
 
-coop_palette <- c("Mitigation + SAI (MAIN)"="#121B54",
-                  "Mitigation + SAI (SPEC)"="#0069a3",
-                  "Mitigation (MAIN)"="#00A36C",
-                  "Mitigation (SPEC)"="#00A36C")
+coop_palette <- c("Mitigation + SAI"="#121B54",
+                  "Mitigation"="#00A36C")
 
 globtemp <- TATM %>%
   inner_join(main_scenarios_coop) %>%
   filter(ttoyear(t)<=2100 & !(Scenario=="Mitigation" & impacts %in% c("bhmbest","specbest"))) %>%
   ggplot(aes(x=ttoyear(t),
              y=value,
-             color=paste0(Scenario, " (",impacts,")" ),
+             color=Scenario,
              group=file)) +
   geom_line(linewidth=1) +
   geom_line(data=TATM_GHG %>%
@@ -19,17 +17,13 @@ globtemp <- TATM %>%
               filter(ttoyear(t)<=2100 & nsrm!="no SRM"),
             aes(x=ttoyear(t),
                 y=value,
-                color=paste0(Scenario, " (",impacts,")" ) ), 
+                color=Scenario), 
             linetype=2,
             linewidth=1) +
   theme_pubr() + 
   ylab("Global temperature increase [°C]") +
   xlab("")+
   scale_color_manual(values=coop_palette,
-                     labels=c("Mitigation + SAI.bhmbest"="BHM",
-                              "Mitigation + SAI.bhmspecbest"="BHM+SPEC",
-                              "Mitigation + SAI.specbest"="SPEC",
-                              "Mitigation.bhmspecbest"="Mitigation"),
                      name="Scenario") + 
   theme(legend.position = "top",
         text=element_text(size=7)) 
@@ -56,7 +50,7 @@ regtemp2100 <- TEMP %>%
              alpha=0.5) +
   geom_point(aes(x=meanlat,
                  y=temp,
-                 color=paste0(Scenario, " (",impacts,")" )),
+                 color=Scenario),
              alpha=0.2) + 
   stat_smooth(data=.%>%filter(nsrm!="no SRM" & impacts=="MAIN"),
               aes(x=meanlat,
@@ -77,12 +71,12 @@ regtemp2100 <- TEMP %>%
               linewidth=1,
               linetype=2) +
   stat_smooth(aes(x=meanlat,
-        y=temp,
-        color=paste0(Scenario, " (",impacts,")" ),
-        weight=pop), 
-    se = FALSE,
-    method = "loess",
-    linewidth=2) +
+                  y=temp,
+                  color=Scenario,
+                  weight=pop), 
+              se = FALSE,
+              method = "loess",
+              linewidth=2) +
   # geom_point(data=.%>%filter(nsrm!="no SRM" & impacts=="bhmspec"),
   #            aes(x=meanlat,
   #                y=opttemp-temp0),
@@ -116,15 +110,15 @@ precip2100 <- PREC %>% rename(prec=value) %>%
               linewidth=0.5,
               alpha=0.1) +
   geom_point(aes(x=meanlat,
-        y=(prec-1)/sd,
-        color=paste0(Scenario, " (",impacts,")" ) ),
-    alpha=0.2) + 
+                 y=(prec-1)/sd,
+                 color=Scenario),
+             alpha=0.2) + 
   stat_smooth(aes(x=meanlat,
-        y=(prec-1)/sd,
-        color=paste0(Scenario, " (",impacts,")" ),
-        weight=pop), 
-    se = FALSE,
-    linewidth=2 ) +
+                  y=(prec-1)/sd,
+                  color=Scenario,
+                  weight=pop), 
+              se = FALSE,
+              linewidth=2 ) +
   # geom_point(data=.%>%filter(nsrm!="no SRM" & impacts=="bhmspec"),
   #            aes(x=meanlat,
   #                y=(prec-1)/sd),
@@ -176,11 +170,11 @@ gdploss2100 <- gdploss %>%
              alpha=0.5) +
   geom_point(aes(x=meanlat,
                  y=value,
-                 color=paste0(Scenario, " (",impacts,")" )),
+                 color=Scenario),
              alpha=0.2) + 
   stat_smooth(aes(x=meanlat,
                   y=value,
-                  color=paste0(Scenario, " (",impacts,")" ),
+                  color=Scenario,
                   weight=pop), 
               se = FALSE,
               method = "loess",
@@ -188,8 +182,7 @@ gdploss2100 <- gdploss %>%
   theme(legend.position="bottom") +
   scale_color_manual(values=coop_palette) +
   scale_fill_manual(values=coop_palette) +
-  facet_wrap(impacts~.,nrow=1) +
-  xlab("") + ylab("Local temperature variation rtm 1980-2018 [°C]") + 
+  xlab("") + ylab("GDP loss [%]") + 
   theme_pubr() + theme(legend.position = "none",
                        text=element_text(size=7)) + coord_flip()
 
@@ -199,10 +192,10 @@ gdploss_maps <- gdploss %>%
   inner_join(gdploss_g %>% select(file,t,value) %>% rename(gloss=value)) %>%
   ungroup() %>% mutate(value=ifelse(n=="row",NA,value)) %>%
   group_by(n,impacts) %>%
-  summarise(value=(value[Scenario=="Mitigation + SAI"]-value[Scenario=="Mitigation"])/gloss[Scenario=="Mitigation"] ) %>%
+  summarise(value=(value[Scenario=="Mitigation + SAI"]-value[Scenario=="Mitigation"]) ) %>%
   full_join(reg %>% filter(iso3!='ATA')) %>% 
   ggplot() +
-  geom_polygon(aes(x = long, y = lat,group = group, fill = -value),size=.05,color="grey50") +
+  geom_polygon(aes(x = long, y = lat,group = group, fill = -value*100),size=.05,color="grey50") +
   geom_point(data=Z_SAI %>% 
                inner_join(main_scenarios_coop) %>%
                mutate(ninj=ifelse(str_detect(inj,"S"),- as.numeric(str_remove(inj,"S")), as.numeric(str_remove(inj,"N") ))) %>%
@@ -211,19 +204,20 @@ gdploss_maps <- gdploss %>%
   geom_text(data= Z_SAI %>% 
               inner_join(main_scenarios_coop) %>%               
               mutate(ninj=ifelse(str_detect(inj,"S"),- as.numeric(str_remove(inj,"S")), as.numeric(str_remove(inj,"N") ))) %>%
-              filter(ttoyear(t)==2100 & !Scenario %in% c("Free-riding") & value != 0),
+              filter(ttoyear(t)==2100 & !Scenario %in% c("Free-riding") & round(value,0) != 0),
             aes(x=-170, y = ninj-5, label= paste0(round(value,0)," TgS/yr")), color="black", size=3 ) +
-  scale_fill_gradient2(name="% GDP variation") +
+  scale_fill_gradient2() +
   theme_void()+ 
   guides(size = FALSE) +
   theme(panel.background = element_rect(fill="white",color="white"),
         legend.position = "top") +
-  facet_wrap(impacts~.,nrow=1)
+  scale_fill_gradient2(low="#780000",high="#003049",name="% GDP variation") 
+  
+#  facet_wrap(impacts~.,nrow=1)
 
 void <- ggplot() + theme_void() + theme(panel.background = element_rect(fill="white",color="white"))
-fig2_coops <- ggarrange(ggarrange(void,globtemp,void,nrow=1, labels("","a",""), widths=c(0.2,1,0.2)),
+fig2_coops <- ggarrange(ggarrange(void,globtemp,void,nrow=1, labels=c("","a",""), widths=c(0.3,1,0.3)),
                         ggarrange(regtemp2100,precip2100,nrow=1, labels=c("b","c")),
-                        gdploss_maps,
-                        nrow=3,heights=c(1.2,1,1.4), labels=c("","","d"))
+                        ggarrange(void,gdploss_maps,void,nrow=1, labels=c("","d",""), widths=c(0.3,1,0.3)),
+                        nrow=3,heights=c(1.2,1,1.2), labels=c("","",""))
 ggsave("fig_coop.png",plot=fig2_coops,width=18, height=24, units="cm")
-

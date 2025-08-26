@@ -42,12 +42,12 @@ inner_join(tatm_pers,
          other=value[COOP=="coop" & nsrm=="no SRM"]-value,
          pers_p=paste0("x ",as.character(as.numeric(pers_p)/as.numeric(pers_t)))) %>%
   filter(ttoyear(t)==2100 & nsrm!="no SRM") %>% mutate(pers_p=ifelse(pers_p=="x NaN","x 1",pers_p)) %>%
-  ggplot() +
+  ggplot() + 
   geom_point(aes(x=pers_t,color=pers_p,y=sub,shape=impacts)) +
   geom_line(aes(x=pers_t,y=sub,group=interaction(impacts,pers_p) )) +
-  ggrepel::geom_text_repel(aes(x=pers_t,color=pers_p,y=sub,label=paste0(round(damfrac*100,1),"%"))) +
-  geom_point(aes(x=pers_t,color=pers_p,y=-other,shape=impacts)) +
-  geom_line(aes(x=pers_t,y=-other,group=interaction(impacts,pers_p) )) 
+  ggrepel::geom_text_repel(aes(x=pers_t,color=pers_p,y=sub,label=paste0(round(damfrac*100,1),"%"))) #+
+  # geom_point(aes(x=pers_t,color=pers_p,y=-other,shape=impacts)) +
+  # geom_line(aes(x=pers_t,y=-other,group=interaction(impacts,pers_p) )) 
   
   
 
