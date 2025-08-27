@@ -19,7 +19,7 @@ map <- countries_map %>%
 #cowplot::ggdraw(gdploss_barplot) + cowplot::draw_plot(plot=map,x=.7,y=.6,width=.3,height=.2) 
 n_to_name <- c("Brazil"="bra","India"="ind","China"="chn","USA"="usa")
 
-damages_maps <- gdploss %>% 
+preferred_position <- gdploss %>% 
   inner_join(main_scenarios_noncoop) %>%
   filter(ttoyear(t)==2100) %>%
   inner_join(countries_map) %>%
@@ -32,25 +32,13 @@ damages_maps <- gdploss %>%
                           betteroff_paris > 0 & betteroff_nash < 0 ~ "Non-use",
                           betteroff_paris > 0 & betteroff_nash > 0 ~ "Non-use (strong)")) %>%
   filter(!nsrm %in% c("no SRM","Cooperative")) %>%
-  mutate(disc=ifelse(n=="row","NA",as.character(disc) )) %>%
-  inner_join(perc_impact %>% select(file,n,Main_source) ) %>%
+  mutate(disc=ifelse(n=="row","NA",as.character(disc) )) 
+
+damages_maps <- preferred_position %>%
   ggplot() +
-  geom_polygon(data=.%>% left_join(reg %>% filter(iso3!='ATA')),
+  geom_polygon(data= . %>% left_join(reg %>% filter(iso3!='ATA')),
                                    aes(x = lat, y = long-180,group = group, fill = disc), color="grey50",size=.05) +
-  # ggpattern::geom_polygon_pattern(data= .%>% 
-  #                                   left_join(reg %>% filter(iso3!='ATA')),
-  #                                 aes(x = lat, y = long-180,group = group, fill = disc, pattern = Main_source),
-  #                                 color="black",
-  #                                 size=.1,
-  #                                 pattern_density=0.02,
-  #                                 pattern_colour="grey20",
-  #                                 pattern_fill="grey20",
-  #                                 pattern_size=0.25) +
-  # ggpattern::scale_pattern_manual(values=c("temp" = "none",
-  #                                          "prec" = "circle",
-  #                                          "mixed" = "stripe"),
-  #                                 name="Agreement") +
-  geom_polygon(data= .%>% 
+  geom_polygon(data= . %>% 
                  left_join(reg %>% filter(iso3!='ATA')) %>% 
                  filter(n==n_to_name[nsrm]), 
                aes(x = lat, y = long-180,group = group),fill=NA,color='black',size=.4) +
@@ -90,71 +78,137 @@ damages_maps <- gdploss %>%
         fill=ordered(disc,c("Laissez-faire","Push to cooperation","Push to mitigation","Non-use","Non-use (strong)","NA"))),
           color="grey50",stat="identity",position="stack",width=10) +
   scale_fill_manual(values=c("Laissez-faire"="#003049",
-                             "Push to cooperation"="#EFF0F2",
+                             "Push to cooperation"="#b4cded",
                              "Non-use"="#C98C7E",
                              "Non-use (strong)"="#780000",
-                             "NA"="white"),
+                             "NA"="grey80"),
                     name="Preferred strategy") +
   scale_color_viridis_d() +
   theme_void()+ 
   guides(color="none",size="none") +
-  facet_wrap(nsrm~.,nrow=2) +
+  facet_wrap(nsrm~.,nrow=4) +
   theme(legend.position = "top") +
+  scale_x_continuous(expand = c(0, 0)) +
   coord_flip() +
-  theme(text = element_text(size = 12))
+  theme(text = element_text(size = 12),   
+        plot.margin = margin(l = 0, r = 0, t = 0, b = 0))
 
 ggsave("Fig_noncoop.png",damages_maps,width=18,height=12,units="cm")
 
+perc_impact <- get_witch("damfrac_type") %>%
+  mutate(source=case_when(str_detect(d,"temp")~"Temperature impacts",
+                          str_detect(d,"prec")~"Precipitaion impacts",
+                          str_detect(d,"spill")~"Spillover effects",
+                          .default="others")) %>%
+  bind_rows(abatefrac) %>%
+  bind_rows(saifrac) %>%
+  mutate(source=ifelse(source %in% c("ab","sai"), "Climate policy (incl. SAI)", source )) %>% 
+  group_by(t,n,file,source) %>% 
+  summarise(value=sum(value)) %>% 
+  inner_join(YGROSS %>% rename(ykali=value)) %>%
+  group_by(t,n,file,source) %>%
+  summarise(value=sum(value*ykali),ykali=mean(ykali)) %>%
+  ungroup() %>% mutate(value=value/ykali) %>% 
+  inner_join(countries_map %>% 
+               mutate(latitude2=case_when(latitude %in% c("Equatorial","Tropical","Subtropical") ~ "low",
+                                          latitude %in% c("Mid latitudes") ~ "mid",
+                                          latitude %in% c("High latitudes") ~ "high"),
+                      latitude_n=ifelse(latitude_n==75,60,latitude_n)) ) %>% 
+  inner_join(pop %>% rename(pop=value)) %>% 
+  group_by(t,file,latitude_n,source) %>%
+  summarise(max=ggdist::weighted_quantile(value,0.95,pop),
+            sdup=ggdist::weighted_quantile(value,0.66,pop),
+            sddo=ggdist::weighted_quantile(value,0.33,pop),
+            min=ggdist::weighted_quantile(value,0.05,pop),
+            med=ggdist::weighted_quantile(value,0.5,pop)) %>%
+  filter(ttoyear(t)==2100) 
 
-ggplot(gdploss %>%        
-         inner_join(pop %>% select(t,n,value) %>% rename(pop=value) %>% unique()) %>% 
-         inner_join(countries_map) %>% 
-         filter(ttoyear(t)==2100 & !Scenario %in% c("Mitigation","Mitigation + SAI","Free-riding")) %>% 
-         ungroup() %>% 
-         filter(!is.na(valuerel_paris) & quantile(valuerel_paris,0.95,na.rm=TRUE) & valuerel_paris>=quantile(valuerel_paris,0.05,na.rm=TRUE)))+
-  geom_vline(xintercept=0,linetype=2,color="grey") +
-#  geom_vline(xintercept=1,linetype=3,color="grey") +
-  ggridges::geom_density_ridges(aes(x = valuerel_paris, y = latitude, color=latitude,weight=pop),
-                                rel_min_height = 0.005,fill=NA,
-                                quantile_lines = TRUE, 
-                                jittered_points = TRUE,
-                                position = ggridges::position_points_jitter(width = 0.05, height = 0),
-                                point_shape = '|', point_size = 1, point_alpha = 0.7) +
-  ylab('') + xlab(' (SCEN - COOP)/(MITIGATION - COOP)') +
-  coord_cartesian(xlim=c(-1,5))
+
+bars <- ggplot(perc_impact %>% 
+              inner_join(preferred_position %>% 
+                           select(n,file,disc) %>% 
+                           inner_join(pop %>% rename(pop=value)) %>% 
+                           inner_join(countries_map) %>% 
+                           group_by(file,latitude_n,disc) %>% 
+                           summarise(n=n(),pop=sum(pop)) %>% 
+                           group_by(file,latitude_n) %>%
+                           filter(pop==max(pop)) %>%  
+                           select(-n)) %>% 
+              inner_join(sanitized_names) %>% 
+              filter(Scenario %in% c("Brazil","India","China","USA") & source != "Climate policy (incl. SAI)")) +
+  geom_hline(yintercept=0,color="grey50",linewidth=0.5) +
+  geom_bar(aes(x=latitude_n,y=med,alpha=source,group=source,fill=disc),stat="identity",position="stack",color="grey80",width=4,linewidth=0.1) +
+  #  geom_errorbar(aes(x=latitude_n,ymin=sddo,ymax=sdup,color=source,group=source),position=position_dodge(), size=1) +
+  #  geom_errorbar(aes(x=source,ymin=min,ymax=max,color=Scenario,group=Scenario),position=position_dodge(),linewidth=0.5,width=0.1,alpha=0.3) +
+  scale_fill_manual(values=c("Laissez-faire"="#003049",
+                             "Push to cooperation"="#b4cded",
+                             "Non-use"="#C98C7E",
+                             "Non-use (strong)"="#780000",
+                             "NA"="grey80"),
+                    name="Preferred strategy") +
+#  scale_alpha_manual(values=c("Temperature impacts"=1,"Precipitation impacts"=0.3)) +
+  facet_wrap(Scenario~.,ncol=1) + 
+  scale_x_continuous(expand=c(0,0),limits = c(-70,83.6)) +
+  coord_flip() +   theme_minimal(base_size = 12) +
+  theme(axis.title.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.y  = element_blank(),
+        axis.ticks.y = element_blank(),
+        panel.grid.major.y = element_blank(), # cleaner
+        panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank(), # cleaner
+        plot.margin = margin(l = 0, r = 0, t = 0, b = 0), # removes outside spacing
+        legend.position = "none")
 
 
-gdploss2100 <- gdploss %>% 
-  inner_join(main_scenarios_noncoop) %>% 
-  filter(ttoyear(t)==2100 & !(Scenario=="Mitigation" & impacts %in% c("BHM")) & n!="row" ) %>% 
-  inner_join(countries_map) %>% 
-  inner_join(pop %>% 
-               filter(ttoyear(t)==2100) %>% 
-               group_by(n,file) %>%
-               summarise(pop=mean(value)) %>% unique()) %>%
-  ggplot() +
-  geom_hline(yintercept=0) +
-  geom_vline(data=data.frame(lats=c(-45,-30,-15,0,15,30,45,60)),
-             aes(xintercept=lats),
-             linetype=2,
-             color="grey",
-             alpha=0.5) +
-  geom_point(aes(x=meanlat,
-                 y=value,
-                 color=Scenario),
-             alpha=0.2) + 
-  stat_smooth(aes(x=meanlat,
-                  y=value,
-                  color=Scenario,
-              weight=pop), 
-se = FALSE,
-method = "loess",
-linewidth=2) +
-  theme(legend.position="bottom") +
+ggplot(perc_impact %>% 
+         inner_join(sanitized_names) %>% 
+         mutate(Scenario=ordered(Scenario,c("Brazil","India","China","USA","Mitigation + SAI","Mitigation","Free-riding"))) %>%
+         filter(ttoyear(t)==2100) %>% 
+         inner_join(pop %>% rename(pop=value)) %>%
+         inner_join(countries_map) )+
+  geom_hline(yintercept=0,linetype=1,color="grey") +
+  geom_errorbar(data=.%>% 
+                  group_by(file,Scenario,zinj,source,t) %>%
+                  summarise(max=ggdist::weighted_quantile(perc,0.95,pop),
+                            sdup=ggdist::weighted_quantile(perc,0.66,pop),
+                            sddo=ggdist::weighted_quantile(perc,0.33,pop),
+                            min=ggdist::weighted_quantile(perc,0.05,pop)),
+                aes(x=source,
+                    ymin=sddo,
+                    ymax=sdup,
+                    color=Scenario, 
+                    group=interaction(source,Scenario) ),
+                width=0.4,position=position_dodge(width=0.5)) +
+  geom_errorbar(data=.%>%
+                  group_by(file,Scenario,zinj,source,t) %>%
+                  summarise(max=ggdist::weighted_quantile(perc,0.95,pop),
+                            sdup=ggdist::weighted_quantile(perc,0.66,pop),
+                            sddo=ggdist::weighted_quantile(perc,0.33,pop),
+                            min=ggdist::weighted_quantile(perc,0.05,pop)),
+                aes(x=source,
+                    ymin=min,
+                    ymax=max,
+                    color=Scenario, 
+                    group=interaction(source,Scenario) ),
+                width=0.1,position=position_dodge(width=0.5),alpha=0.2) +
+  geom_point(data=. %>% 
+               group_by(file,Scenario,source,t) %>%
+               summarise(med=ggdist::weighted_quantile(perc,0.5,pop)) ,
+             aes(x=source,
+                 y=med,
+                 fill=Scenario,
+                 group=interaction(source,Scenario)),
+             color="black",
+             size=2,shape=21,position=position_dodge(width=0.5)) +
+  geom_point(aes(x=source,
+                 y=perc,
+                 color=Scenario,
+                 group=interaction(zinj,Scenario)),
+             size=1,position=position_dodge(width=0.5),alpha=0.5,shape=108) +
   scale_color_manual(values=regpalette_srm) +
-  scale_fill_manual(values=regpalette_srm) +
-  facet_wrap(impacts~.,nrow=1) +
-  xlab("") + ylab("Local temperature variation rtm 1980-2018 [°C]") + 
-  theme_pubr() + theme(legend.position = "none",
-                       text=element_text(size=12)) + coord_flip()
+  scale_fill_manual(values=regpalette_srm) +  
+  scale_y_continuous(limits = c(-0.1,1.1)) + 
+  ylab('') + xlab('') + coord_flip()
 
+ggsave("fig_coop.png",plot=ggarrange(damages_maps+ theme(legend.position = "none"),bars,widths=c(1,0.3)),width=18, height=24, units="cm")

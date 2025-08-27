@@ -3,7 +3,7 @@ main_scenarios_noncoop <- sanitized_names %>% filter(impacts!='bhm' &
                                                         (zinj=="sovereign" & !nsrm %in% c("Cooperative","no SRM")))  
 
 
-ggplot(gdploss %>% 
+fig_inj <- ggplot(gdploss %>% 
          inner_join(main_scenarios_noncoop) %>% 
          mutate(zinj=ifelse(nsrm=="no SRM", "no SRM", zinj),
                 Scenario=ordered(Scenario,c("Brazil","India","China","USA","Mitigation + SAI","Mitigation","Free-riding")),
@@ -63,5 +63,23 @@ ggplot(gdploss %>%
              color="black",
              size=1,shape=23,position=position_dodge(width=0.5)) +
   scale_color_manual(values=regpalette_srm) +
-  scale_fill_manual(values=regpalette_srm) +
+  scale_fill_manual(values=regpalette_srm) +  
+  scale_y_continuous(limits = c(-0.1,0.4)) + 
   ylab('') + xlab('') + coord_flip()
+ggsave("fig_injection.png",plot=fig_inj,width=12, height=8, units="cm")
+
+ggplot(Z_SAI %>% 
+         inner_join(main_scenarios_noncoop) %>% 
+         mutate(zinj=ifelse(nsrm=="no SRM", "no SRM", zinj),
+                Scenario=ordered(Scenario,c("Brazil","India","China","USA","Mitigation + SAI","Mitigation","Free-riding")),
+                zinj=ordered(zinj,c("symmetric","sovereign","free","no SRM"))) %>%
+         filter(ttoyear(t)==2100 & value!=0))+ 
+  geom_point(aes(x=zinj, 
+                 y=injton(inj), 
+                 size= value,
+                 color=Scenario,
+                 shape=zinj,
+                 group=interaction(zinj,Scenario)),
+             position=position_dodge(width=0.5),shape=21,fill=NA) +
+  scale_color_manual(values=regpalette_srm) +
+  scale_fill_manual(values=regpalette_srm)
