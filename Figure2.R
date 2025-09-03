@@ -2,6 +2,7 @@ a <- optimal_temp %>%
   cross_join(data.frame(tvar=seq(-2,+2,0.1))) %>% 
   mutate(dg = TM * (tvar) + TM_2 * ((tvar+base_temp)^2-base_temp^2) + dev_TM_all_2 * (tvar/sd_temp)^2   ) %>% 
   inner_join(sanitized_names) %>% select(n,impacts,ci_imp,base_temp,tvar,dg) %>% unique() %>% 
+  filter(impacts==imp_select) %>% 
   inner_join(countries_map) %>% 
   group_by(latitude,impacts,ci_imp,tvar) %>% 
   summarise(med=median(dg), min = quantile(dg,0.05), max=quantile(dg,0.95)) %>% 
@@ -27,6 +28,7 @@ b <- optimal_prec %>%
   mutate(dg = RR * (tvar*sd_prec*1e-3) + RR_2 * ( ((tvar*sd_prec+base_precip)*1e-3)^2-(base_precip*1e-3)^2) + dev_RR_all_2 * (tvar)^2   ) %>% 
   inner_join(sanitized_names) %>% select(n,impacts,ci_imp,base_temp,tvar,dg) %>% unique() %>% 
   inner_join(countries_map) %>% 
+  filter(impacts==imp_select) %>% 
   group_by(latitude,impacts,ci_imp,tvar) %>% 
   summarise(med=median(dg), min = quantile(dg,0.05), max=quantile(dg,0.95)) %>% 
   ggplot() +
@@ -47,7 +49,7 @@ b <- optimal_prec %>%
 
 c <- gdploss %>% 
   inner_join(sanitized_names) %>%
-  filter(ttoyear(t)==2100 & Scenario %in% c("Free-riding", "Mitigation") ) %>%
+  filter(ttoyear(t)==2100 & Scenario %in% c("Free-riding", "Mitigation") & impacts==imp_select & pers_p=="20" & pers_t=="20" ) %>%
   inner_join(TATM %>% rename(tatm=value) %>% select(-n)) %>% 
   inner_join(gdploss_g %>% select(file,t,value) %>% rename(gloss=value)) %>%
   ungroup() %>% mutate(value=ifelse(n=="row",NA,value)) %>%
@@ -64,4 +66,4 @@ c <- gdploss %>%
 
 fig_impacts <- ggarrange(ggarrange(a,b,nrow=1, labels=c("a",""),common.legend = TRUE),
                          c,nrow=2,heights=c(1,1), labels=c("","b"))
-ggsave("fig_impacts.png",plot=fig_impacts,width=18, height=16, units="cm")
+ggsave("fig_impacts_cons.png",plot=fig_impacts,width=18, height=16, units="cm")

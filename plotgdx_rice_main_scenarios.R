@@ -1,5 +1,5 @@
 rm(list = ls())
-main_folder = "../Results_secondround/Injection" #Where you're RICE/DICE/RICE50x code is located
+main_folder = "../Results_secondround/Main" #Where you're RICE/DICE/RICE50x code is located
 witch_folder = main_folder #Where you're RICE/DICE/RICE50x code is located
 subdir = c("") #can be multiple directories
 gdxtools::igdx("/Library/Frameworks/GAMS.framework/Resources/")
@@ -9,12 +9,13 @@ year0 = 2015
 tstep = 5
 
 restrict_files = c("") #to all scenarios matching partly at least one of its arguments
-exclude_files = c("IMPbhmbest_","IMPspecbest_")
+exclude_files = c("_Tareaobs40_Pareaobs40_")
 removepattern = c("")
 
 yearmin = 1980
 yearmax = 2300
 
+imp_select <- "MAIN"
 #Initialize default options, load all witch and other functionsget
 source('R/witch_functions.R')
 
@@ -44,8 +45,9 @@ sanitize <- function(.x) {
   zinj=str_extract(file,"(?<=INJ).+?(?=_)"),
   impacts=str_extract(file,"(?<=IMP).+?(?=_)"),
   scentemp=str_extract(file,"(?<=T).+?(?=_)"),
-  scenprec=str_extract(str_remove_all(file,"_POL|_IMP"),"(?<=P).+?(?=_)"),
-  trade=str_extract(file,"(?<=TRD).*")) %>%
+  scenprec=ifelse(str_detect(file,"TRD|AB"),str_extract(str_remove_all(file,"_POL|_IMP"),"(?<=P).+?(?=_)"), str_extract(str_remove_all(file,"_POL|_IMP"),"(?<=P).*") ),
+  trade=str_extract(file,"(?<=TRD).*"),
+  scenab=str_extract(file,"(?<=AB).*")) %>%
   mutate(nsrm=case_when(nsrm=="brics"~"BRICS",
                    nsrm=="sc"~"UN Security Council",
                    nsrm=="scbrics"~"UN Security Council and BRICS",
@@ -91,7 +93,9 @@ sanitize <- function(.x) {
                              impacts=="bhmada" ~ "BHM+ADA",
                              .default=impacts),
            pers_p=ifelse(is.na(pers_p) | pers_p==300, "inf", pers_p),
-           pers_t=ifelse(is.na(pers_t) | pers_t==300, "inf", pers_t ) ) 
+           pers_t=ifelse(is.na(pers_t) | pers_t==300, "inf", pers_t ),
+           trade=ifelse(is.na(trade),"no",trade),
+           scenab=ifelse(is.na(scenab), "prob50",scenab)) 
 }
 
 injton <- function(.x) {
@@ -163,13 +167,14 @@ countries_map <- reg %>%
   group_by(n) %>%
   summarise(minlat=min(lat),maxlat=max(lat),meanlat=mean(lat),
             minlong=min(long),maxlong=max(long),meanlong=mean(long) )%>%  
-  mutate(latitude=abs(round(meanlat/15)*15) ) %>% 
-  mutate(hemishpere=ifelse(latitude<15,"Southern","Northern")) %>%
-  mutate(latitude=case_when((latitude==15 | n=="ind") & n!="bra"  ~ "Tropical",
-                            latitude==0 | n=="bra" ~ "Equatorial",
-                            latitude==30 ~ "Subtropical",
-                            latitude==45 ~ "Mid latitudes",
-                            latitude %in% c(60,75) ~ "High latitudes")) %>%
+  mutate(latitude=abs(round(meanlat/15)*15),
+         latitude_n=round(meanlat/15)*15) %>% 
+  mutate(hemisphere=ifelse(meanlat<=0,"Southern","Northern")) %>%
+  mutate(latitude=case_when((latitude_n==15 | n=="ind") & n!="bra"  ~ "Tropical",
+                            latitude_n==0 | n=="bra" ~ "Equatorial",
+                            latitude_n==30 ~ "Subtropical",
+                            latitude_n==45 ~ "Mid latitudes",
+                            latitude_n %in% c(60,75) ~ "High latitudes")) %>%
   mutate(latitude=ordered(latitude,
                           c("Equatorial",
                             "Tropical",
@@ -197,7 +202,7 @@ regpalette_srm <- c("Mitigation + SAI"="#121B54",
 
 dr <- 0.03
 NPVgdploss <- Y %>%
-  full_join(YGROSS %>% rename(ykali=value)) %>%
+  full_join(ykali %>% rename(ykali=value)) %>%
   filter(ttoyear(t)<=2100) %>%
   group_by(n,file) %>%
   summarise(value = sum( (ykali-value)/(1+dr)^(t-1) ) / sum( (ykali)/(1+dr)^(t-1) ) )
@@ -212,12 +217,12 @@ PREC <- get_witch("PRECIP_REGION") %>%
 damfrac_type <- get_witch("damfrac_type") %>% 
   pivot_wider(names_from="d") %>%
   inner_join(get_witch("ABATECOST") %>%
-  inner_join(get_witch("YGROSS") %>% rename(y0=value)) %>%
+  inner_join(get_witch("ykali") %>% rename(y0=value)) %>%
   mutate(ab=value/y0)) %>% select(-value) %>%
   inner_join(countries_map) 
 
 gdploss <- Y %>%
-  full_join(YGROSS %>% rename(ykali=value)) %>%
+  full_join(ykali %>% rename(ykali=value)) %>%
   mutate(value=(ykali-value)/ykali )  %>%
   inner_join(sanitized_names) %>%
   group_by_at(c("t","n",setdiff(colnames(sanitized_names),c("nsrm","COOP","Scenario","file","pathdir","zinj"))) ) %>%
@@ -226,7 +231,7 @@ gdploss <- Y %>%
          valuerel_paris=(value-value[nsrm=="no SRM" & COOP=="coop" & zinj=="free"]))
 
 gdploss_g <- Y %>%
-  full_join(YGROSS %>% rename(ykali=value)) %>%
+  full_join(ykali %>% rename(ykali=value)) %>%
   group_by(file,t) %>%
   summarise(value=sum(ykali-value)/sum(ykali) )  %>%
   inner_join(sanitized_names) %>%
@@ -237,14 +242,14 @@ gdploss_g <- Y %>%
 
 
 damfrac_g <- DAMAGES %>%
-  full_join(YGROSS %>% rename(ykali=value)) %>%
+  full_join(ykali %>% rename(ykali=value)) %>%
   group_by(file,t) %>%
   summarise(value=sum(value)/sum(ykali) ) 
 
 abatefrac <- get_witch("ABATECOST") %>%
   group_by(file,t,n) %>%
   summarise(value=sum(value)) %>%
-  inner_join(YGROSS %>% rename(ykali=value)) %>%
+  inner_join(ykali %>% rename(ykali=value)) %>%
   mutate(value = value/ykali,source="ab") %>%
   select(file,n,value,source,t) %>%
   complete()
@@ -252,16 +257,16 @@ abatefrac <- get_witch("ABATECOST") %>%
 abatefrac_g <- get_witch("ABATECOST") %>%
   group_by(file,t,n) %>%
   summarise(value=sum(value)) %>%
-  inner_join(YGROSS %>% rename(ykali=value)) %>%
+  inner_join(ykali %>% rename(ykali=value)) %>%
   group_by(file,t) %>%
   summarise(value=sum(value),ykali=sum(ykali)) %>%
   ungroup() %>%
-  mutate(value = value/ykali,source="ab") 
+  mutate(valuefrac = value/ykali,source="ab") 
 
 saifrac <- get_witch("COST_SAI") %>%
   group_by(file,t,n) %>%
   summarise(value=sum(value)) %>%
-  inner_join(YGROSS %>% rename(ykali=value)) %>%
+  inner_join(ykali %>% rename(ykali=value)) %>%
   mutate(value = value/ykali,source="sai") %>%
   select(file,n,value,source,t) %>%
   complete()
@@ -278,7 +283,7 @@ perc_impact <- get_witch("damfrac_type") %>%
   bind_rows(saifrac) %>%
   filter(ttoyear(t)==2100) %>%
   group_by(file,n,t) %>%
-  mutate(perc=value/sum(value)) %>% 
+  mutate(perc=abs(value)/abs(sum(value)) ) %>% 
   complete() %>%
   group_by(file,t,n) %>%
   mutate(Main_source=case_when(perc[source=="temp"]>0.75~"temp",

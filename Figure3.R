@@ -1,5 +1,7 @@
 main_scenarios_coop <- sanitized_names %>% 
-  filter(COOP=="coop" & impacts!="bhm")
+  filter(COOP=="coop" & impacts=="MAIN" & pers_p=="20" & pers_t=="20" 
+#         & (zinj=="symmetric"  | (zinj=="free" & nsrm %in% c("no SRM")) )
+         )
 
 coop_palette <- c("Mitigation + SAI"="#121B54",
                   "Mitigation"="#00A36C")
@@ -34,7 +36,7 @@ regtemp2100 <- TEMP %>%
   group_by(file,n) %>%
   mutate(temp=temp-temp0) %>%
   inner_join(main_scenarios_coop) %>%
-  filter(ttoyear(t)==2100 & !(Scenario=="Mitigation" & impacts %in% c("BHM","SPEC")) & n!="row" ) %>% 
+  filter(ttoyear(t)==2100 & !(Scenario=="Mitigation" & impacts %in% c("BHM")) & n!="row" ) %>% 
   inner_join(countries_map) %>% 
   inner_join(optimal_temp) %>%
   inner_join(pop %>% 
@@ -92,7 +94,7 @@ regtemp2100 <- TEMP %>%
 precip2100 <- PREC %>% rename(prec=value) %>% 
   inner_join(main_scenarios_coop) %>%
   inner_join(base_prec) %>%
-  filter(ttoyear(t)==2100 & !(Scenario=="Mitigation" & impacts %in% c("BHM","SPEC"))) %>%   
+  filter(ttoyear(t)==2100 & !(Scenario=="Mitigation" & impacts %in% c("BHM"))) %>%   
   inner_join(countries_map) %>% 
   inner_join(optimal_prec) %>%
   inner_join(pop %>% 
@@ -220,4 +222,4 @@ fig2_coops <- ggarrange(ggarrange(void,globtemp,void,nrow=1, labels=c("","a","")
                         ggarrange(regtemp2100,precip2100,nrow=1, labels=c("b","c")),
                         ggarrange(void,gdploss_maps,void,nrow=1, labels=c("","d",""), widths=c(0.3,1,0.3)),
                         nrow=3,heights=c(1.2,1,1.2), labels=c("","",""))
-ggsave("fig_coop.png",plot=fig2_coops,width=18, height=24, units="cm")
+ggsave("fig_coop_symmetric.png",plot=fig2_coops,width=18, height=24, units="cm")

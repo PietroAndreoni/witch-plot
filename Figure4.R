@@ -4,7 +4,7 @@ temperature_maps <- TEMP %>%
   rename(temp=value) %>%
   inner_join(sanitized_names) %>%
   inner_join(optimal_temp) %>%
-  filter(ttoyear(t)==2100 & impacts!="bhm" &  Scenario %in% c("Mitigation","Mitigation + SAI","USA","India","Brazil","China")  ) %>% 
+  filter(ttoyear(t)==2100 & impacts==imp_select &  Scenario %in% c("Mitigation","Mitigation + SAI","USA","India","Brazil","China")  ) %>% 
   inner_join(countries_map) %>% 
   left_join(reg %>% filter(iso3!='ATA')) %>% 
 #  mutate(val=ifelse(abs(temp-opttemp)>3,sign(abs(temp-opttemp))*3,temp-opttemp )) %>% 
@@ -17,7 +17,7 @@ temperature_maps <- TEMP %>%
   geom_point(data=Z_SAI %>% 
                inner_join(sanitized_names) %>%
                mutate(ninj=ifelse(str_detect(inj,"S"),- as.numeric(str_remove(inj,"S")), as.numeric(str_remove(inj,"N") ))) %>%
-               filter(ttoyear(t)==2100 & impacts!="bhm" & Scenario %in% c("Mitigation","Mitigation + SAI","USA","India","Brazil","China") & value != 0),
+               filter(ttoyear(t)==2100 & impacts==imp_select & Scenario %in% c("Mitigation","Mitigation + SAI","USA","India","Brazil","China") & value != 0),
              aes(x=-170, y = ninj, size= value ), shape=21, color="black", fill=NA ) +
   scale_fill_gradient2(low="#003049",high="#780000",name="T variation [°C]") +
   theme_void()+ 
@@ -28,7 +28,7 @@ temperature_maps <- TEMP %>%
 
 precipitation_maps <- PREC %>% rename(prec=value) %>% 
   inner_join(sanitized_names) %>%
-  filter(ttoyear(t)==2100 & impacts!="bhm" & Scenario %in% c("Mitigation","Mitigation + SAI","USA","India","Brazil","China")) %>%
+  filter(ttoyear(t)==2100 & impacts==imp_select & Scenario %in% c("Mitigation","Mitigation + SAI","USA","India","Brazil","China")) %>%
   inner_join(countries_map) %>%
   inner_join(optimal_prec) %>%
   left_join(reg %>% filter(iso3!='ATA')) %>% 
@@ -43,7 +43,7 @@ precipitation_maps <- PREC %>% rename(prec=value) %>%
   geom_point(data=Z_SAI %>% 
                inner_join(sanitized_names) %>%
                mutate(ninj=ifelse(str_detect(inj,"S"),- as.numeric(str_remove(inj,"S")), as.numeric(str_remove(inj,"N") ))) %>%
-               filter(ttoyear(t)==2100 & impacts!="bhm" & Scenario %in% c("Mitigation","Mitigation + SAI","USA","India","Brazil","China") & value != 0),
+               filter(ttoyear(t)==2100 & impacts==imp_select & Scenario %in% c("Mitigation","Mitigation + SAI","USA","India","Brazil","China") & value != 0),
              aes(x=-170, y = ninj, size= value ), shape=21, color="black", fill=NA ) +
   scale_fill_gradient2(low="#780000",high="#003049",name="P variation [SD]") +
   theme_void()+ 
@@ -52,4 +52,4 @@ precipitation_maps <- PREC %>% rename(prec=value) %>%
   facet_wrap(ordered(Scenario,c("Mitigation","Mitigation + SAI","China","USA","Brazil","India"))~.,nrow=2)
 
 fig_maps <- ggarrange(temperature_maps,precipitation_maps, nrow=2, labels = c("a","b"))
-ggsave("fig_maps.png",plot=fig_maps,width=18, height=24, units="cm")
+ggsave("fig_maps_cons.png",plot=fig_maps,width=18, height=24, units="cm")

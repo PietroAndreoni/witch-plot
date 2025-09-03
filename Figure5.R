@@ -1,6 +1,6 @@
 #main_scenarios_noncoop <- sanitized_names %>% filter(impacts!='bhm' & (zinj=="free" & !nsrm %in% c("Cooperative","no SRM")) | ((zinj=="free" & nsrm %in% c("Cooperative","no SRM")))  )
-main_scenarios_noncoop <- sanitized_names %>% filter(zinj=="symmetric"  | (zinj=="free" & nsrm %in% c("Cooperative","no SRM"))  )
-main_scenarios_noncoop <- sanitized_names 
+#main_scenarios_noncoop <- sanitized_names %>% filter(zinj=="symmetric"  | (zinj=="free" & nsrm %in% c("Cooperative","no SRM"))  )
+main_scenarios_noncoop <- sanitized_names %>% filter(impacts=="SPEC")
 
 map <- countries_map %>%
   mutate(latitude=ifelse(n=="row","ROW",as.character(latitude))) %>%
@@ -86,16 +86,14 @@ damages_maps <- preferred_position %>%
   scale_color_viridis_d() +
   theme_void()+ 
   guides(color="none",size="none") +
-  facet_wrap(nsrm~.,nrow=4) +
+  facet_wrap(nsrm~.,nrow=4,, strip.position = "left") +
   theme(legend.position = "top") +
-  scale_x_continuous(expand = c(0, 0)) +
+  scale_x_continuous(expand=c(0,0),limits = c(-80,84)) +
   coord_flip() +
-  theme(text = element_text(size = 12),   
+  theme(text = element_text(size = 7),   
         plot.margin = margin(l = 0, r = 0, t = 0, b = 0))
 
-ggsave("Fig_noncoop.png",damages_maps,width=18,height=12,units="cm")
-
-perc_impact <- get_witch("damfrac_type") %>%
+dist_impacts_bytype <- get_witch("damfrac_type") %>%
   mutate(source=case_when(str_detect(d,"temp")~"Temperature impacts",
                           str_detect(d,"prec")~"Precipitaion impacts",
                           str_detect(d,"spill")~"Spillover effects",
@@ -105,10 +103,10 @@ perc_impact <- get_witch("damfrac_type") %>%
   mutate(source=ifelse(source %in% c("ab","sai"), "Climate policy (incl. SAI)", source )) %>% 
   group_by(t,n,file,source) %>% 
   summarise(value=sum(value)) %>% 
-  inner_join(YGROSS %>% rename(ykali=value)) %>%
-  group_by(t,n,file,source) %>%
-  summarise(value=sum(value*ykali),ykali=mean(ykali)) %>%
-  ungroup() %>% mutate(value=value/ykali) %>% 
+#  inner_join(YGROSS %>% rename(ykali=value)) %>%
+#  group_by(t,n,file,source) %>%
+#  summarise(value=sum(value*ykali),ykali=mean(ykali)) %>%
+#  ungroup() %>% mutate(value=value/ykali) %>% 
   inner_join(countries_map %>% 
                mutate(latitude2=case_when(latitude %in% c("Equatorial","Tropical","Subtropical") ~ "low",
                                           latitude %in% c("Mid latitudes") ~ "mid",
@@ -124,7 +122,7 @@ perc_impact <- get_witch("damfrac_type") %>%
   filter(ttoyear(t)==2100) 
 
 
-bars <- ggplot(perc_impact %>% 
+bars <- ggplot(dist_impacts_bytype %>% 
               inner_join(preferred_position %>% 
                            select(n,file,disc) %>% 
                            inner_join(pop %>% rename(pop=value)) %>% 
@@ -137,10 +135,16 @@ bars <- ggplot(perc_impact %>%
               inner_join(sanitized_names) %>% 
               filter(Scenario %in% c("Brazil","India","China","USA") & source != "Climate policy (incl. SAI)")) +
   geom_hline(yintercept=0,color="grey50",linewidth=0.5) +
-  geom_bar(aes(x=latitude_n,y=med,alpha=source,group=source,fill=disc),stat="identity",position="stack",color="grey80",width=4,linewidth=0.1) +
-  #  geom_errorbar(aes(x=latitude_n,ymin=sddo,ymax=sdup,color=source,group=source),position=position_dodge(), size=1) +
-  #  geom_errorbar(aes(x=source,ymin=min,ymax=max,color=Scenario,group=Scenario),position=position_dodge(),linewidth=0.5,width=0.1,alpha=0.3) +
+  geom_bar(aes(x=latitude_n,y=med,alpha=source,group=source,fill=disc),stat="identity",position="dodge",color="grey20",width=10,linewidth=0.1) +
+  geom_errorbar(aes(x=latitude_n,ymin=sddo,ymax=sdup,group=source),position=position_dodge(),width=10,linewidth=0.1,color="grey20") +
+#  geom_errorbar(aes(x=latitude_n,ymin=min,ymax=max,color=disc,alpha=source,group=source),position=position_dodge(),linewidth=0.1,width=0.1) +
   scale_fill_manual(values=c("Laissez-faire"="#003049",
+                             "Push to cooperation"="#b4cded",
+                             "Non-use"="#C98C7E",
+                             "Non-use (strong)"="#780000",
+                             "NA"="grey80"),
+                    name="Preferred strategy") +
+  scale_color_manual(values=c("Laissez-faire"="#003049",
                              "Push to cooperation"="#b4cded",
                              "Non-use"="#C98C7E",
                              "Non-use (strong)"="#780000",
@@ -148,67 +152,24 @@ bars <- ggplot(perc_impact %>%
                     name="Preferred strategy") +
 #  scale_alpha_manual(values=c("Temperature impacts"=1,"Precipitation impacts"=0.3)) +
   facet_wrap(Scenario~.,ncol=1) + 
-  scale_x_continuous(expand=c(0,0),limits = c(-70,83.6)) +
-  coord_flip() +   theme_minimal(base_size = 12) +
+  scale_x_continuous(expand=c(0,0),limits = c(-80,84)) +
+  coord_flip() +   theme_minimal(base_size = 7) +
+  guides(alpha="none",fill="none") +
   theme(axis.title.y = element_blank(),
         axis.title.x = element_blank(),
         axis.text.y  = element_blank(),
         axis.ticks.y = element_blank(),
+#        axis.text.x  = element_blank(),
+#        axis.ticks.x = element_blank(),
+        strip.text = element_blank(),
         panel.grid.major.y = element_blank(), # cleaner
         panel.grid.minor = element_blank(),
         panel.grid.major.x = element_blank(), # cleaner
-        plot.margin = margin(l = 0, r = 0, t = 0, b = 0), # removes outside spacing
-        legend.position = "none")
+        plot.margin = margin(l = 0, r = 0, t = 0, b = 0))
 
-
-ggplot(perc_impact %>% 
-         inner_join(sanitized_names) %>% 
-         mutate(Scenario=ordered(Scenario,c("Brazil","India","China","USA","Mitigation + SAI","Mitigation","Free-riding"))) %>%
-         filter(ttoyear(t)==2100) %>% 
-         inner_join(pop %>% rename(pop=value)) %>%
-         inner_join(countries_map) )+
-  geom_hline(yintercept=0,linetype=1,color="grey") +
-  geom_errorbar(data=.%>% 
-                  group_by(file,Scenario,zinj,source,t) %>%
-                  summarise(max=ggdist::weighted_quantile(perc,0.95,pop),
-                            sdup=ggdist::weighted_quantile(perc,0.66,pop),
-                            sddo=ggdist::weighted_quantile(perc,0.33,pop),
-                            min=ggdist::weighted_quantile(perc,0.05,pop)),
-                aes(x=source,
-                    ymin=sddo,
-                    ymax=sdup,
-                    color=Scenario, 
-                    group=interaction(source,Scenario) ),
-                width=0.4,position=position_dodge(width=0.5)) +
-  geom_errorbar(data=.%>%
-                  group_by(file,Scenario,zinj,source,t) %>%
-                  summarise(max=ggdist::weighted_quantile(perc,0.95,pop),
-                            sdup=ggdist::weighted_quantile(perc,0.66,pop),
-                            sddo=ggdist::weighted_quantile(perc,0.33,pop),
-                            min=ggdist::weighted_quantile(perc,0.05,pop)),
-                aes(x=source,
-                    ymin=min,
-                    ymax=max,
-                    color=Scenario, 
-                    group=interaction(source,Scenario) ),
-                width=0.1,position=position_dodge(width=0.5),alpha=0.2) +
-  geom_point(data=. %>% 
-               group_by(file,Scenario,source,t) %>%
-               summarise(med=ggdist::weighted_quantile(perc,0.5,pop)) ,
-             aes(x=source,
-                 y=med,
-                 fill=Scenario,
-                 group=interaction(source,Scenario)),
-             color="black",
-             size=2,shape=21,position=position_dodge(width=0.5)) +
-  geom_point(aes(x=source,
-                 y=perc,
-                 color=Scenario,
-                 group=interaction(zinj,Scenario)),
-             size=1,position=position_dodge(width=0.5),alpha=0.5,shape=108) +
-  scale_color_manual(values=regpalette_srm) +
-  scale_fill_manual(values=regpalette_srm) +  
-  scale_y_continuous(limits = c(-0.1,1.1)) + 
-  ylab('') + xlab('') + coord_flip()
-
-ggsave("fig_coop.png",plot=ggarrange(damages_maps+ theme(legend.position = "none"),bars,widths=c(1,0.3)),width=18, height=24, units="cm")
+require(patchwork)
+ggsave("fig_noncoop_cons.png",
+       plot=damages_maps + bars + plot_layout(widths = c(1, 0.4), guides = "collect"),
+       width=18, 
+       height=24, 
+       units="cm")
