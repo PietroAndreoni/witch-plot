@@ -8,7 +8,7 @@ temperature_maps <- TEMP %>%
   inner_join(countries_map) %>% 
   left_join(reg %>% filter(iso3!='ATA')) %>% 
 #  mutate(val=ifelse(abs(temp-opttemp)>3,sign(abs(temp-opttemp))*3,temp-opttemp )) %>% 
-  mutate(val=ifelse(abs(temp-base_temp)>2,sign(abs(temp-base_temp))*2,temp-base_temp )) %>% 
+  mutate(val=ifelse(abs(temp-base_temp)>2,sign(temp-base_temp)*2,temp-base_temp )) %>% 
 #  mutate(val=temp-base_temp) %>% 
   ggplot() +
   geom_polygon(aes(x = long, y = lat,group = group, fill = val),size=.05,color="grey50") +
@@ -52,4 +52,9 @@ precipitation_maps <- PREC %>% rename(prec=value) %>%
   facet_wrap(ordered(Scenario,c("Mitigation","Mitigation + SAI","China","USA","Brazil","India"))~.,nrow=2)
 
 fig_maps <- ggarrange(temperature_maps,precipitation_maps, nrow=2, labels = c("a","b"))
-ggsave("fig_maps_cons.png",plot=fig_maps,width=18, height=24, units="cm")
+ggsave("fig4.png",
+       plot=fig_maps,
+       width=18, 
+       height=24, 
+       units="cm",
+       dpi=400)

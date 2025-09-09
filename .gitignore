@@ -23,3 +23,5 @@ gdxcompaR/witch/rsconnect
 gdxcompaR/iiasadb/*.RData
 gdxcompaR/iiasadb/rsconnect
 iiasa_credentials.yml
+
+*.png

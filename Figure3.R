@@ -1,5 +1,5 @@
 main_scenarios_coop <- sanitized_names %>% 
-  filter(COOP=="coop" & impacts=="MAIN" & pers_p=="20" & pers_t=="20" 
+  filter(COOP=="coop" & impacts==imp_select & ci_imp==ci_sel 
 #         & (zinj=="symmetric"  | (zinj=="free" & nsrm %in% c("no SRM")) )
          )
 
@@ -222,4 +222,4 @@ fig2_coops <- ggarrange(ggarrange(void,globtemp,void,nrow=1, labels=c("","a","")
                         ggarrange(regtemp2100,precip2100,nrow=1, labels=c("b","c")),
                         ggarrange(void,gdploss_maps,void,nrow=1, labels=c("","d",""), widths=c(0.3,1,0.3)),
                         nrow=3,heights=c(1.2,1,1.2), labels=c("","",""))
-ggsave("fig_coop_symmetric.png",plot=fig2_coops,width=18, height=24, units="cm")
+ggsave("fig2.png",plot=fig2_coops,width=18, height=24, units="cm",dpi=400)

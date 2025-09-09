@@ -1,21 +1,22 @@
 rm(list = ls())
-main_folder = "../Results_secondround/Main" #Where you're RICE/DICE/RICE50x code is located
+main_folder = "../Results_final/Impacts" #Where you're RICE/DICE/RICE50x code is located
 witch_folder = main_folder #Where you're RICE/DICE/RICE50x code is located
 subdir = c("") #can be multiple directories
-gdxtools::igdx("/Library/Frameworks/GAMS.framework/Resources/")
+#gdxtools::igdx("/Library/Frameworks/GAMS.framework/Resources/")
 
 reg_id = "maxiso3sai" #for historical data folder
 year0 = 2015
 tstep = 5
 
-restrict_files = c("") #to all scenarios matching partly at least one of its arguments
-exclude_files = c("_Tareaobs40_Pareaobs40_")
+restrict_files = c("IMPbhmbest_","IMPbhmspecbest_") #to all scenarios matching partly at least one of its arguments
+exclude_files = c("")
 removepattern = c("")
 
 yearmin = 1980
 yearmax = 2300
 
-imp_select <- "MAIN"
+imp_select <- "BHM"
+ci_sel <- "best"
 #Initialize default options, load all witch and other functionsget
 source('R/witch_functions.R')
 
@@ -170,14 +171,13 @@ countries_map <- reg %>%
   mutate(latitude=abs(round(meanlat/15)*15),
          latitude_n=round(meanlat/15)*15) %>% 
   mutate(hemisphere=ifelse(meanlat<=0,"Southern","Northern")) %>%
-  mutate(latitude=case_when((latitude_n==15 | n=="ind") & n!="bra"  ~ "Tropical",
-                            latitude_n==0 | n=="bra" ~ "Equatorial",
-                            latitude_n==30 ~ "Subtropical",
-                            latitude_n==45 ~ "Mid latitudes",
-                            latitude_n %in% c(60,75) ~ "High latitudes")) %>%
+  mutate(latitude=case_when((latitude==15 | n=="ind") & n!="bra"  ~ "Low latitudes",
+                            latitude==0 | n=="bra" ~ "Low latitudes",
+                            latitude==30 ~ "Subtropical",
+                            latitude==45 ~ "Mid latitudes",
+                            latitude %in% c(60,75) ~ "High latitudes")) %>%
   mutate(latitude=ordered(latitude,
-                          c("Equatorial",
-                            "Tropical",
+                          c("Low latitudes",
                             "Subtropical",
                             "Mid latitudes",
                             "High latitudes"))) %>%

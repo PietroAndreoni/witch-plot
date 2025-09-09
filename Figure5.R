@@ -1,12 +1,12 @@
 #main_scenarios_noncoop <- sanitized_names %>% filter(impacts!='bhm' & (zinj=="free" & !nsrm %in% c("Cooperative","no SRM")) | ((zinj=="free" & nsrm %in% c("Cooperative","no SRM")))  )
 #main_scenarios_noncoop <- sanitized_names %>% filter(zinj=="symmetric"  | (zinj=="free" & nsrm %in% c("Cooperative","no SRM"))  )
-main_scenarios_noncoop <- sanitized_names %>% filter(impacts=="SPEC")
+main_scenarios_noncoop <- sanitized_names %>% filter(impacts==imp_select)
 
 map <- countries_map %>%
   mutate(latitude=ifelse(n=="row","ROW",as.character(latitude))) %>%
   full_join(reg %>% filter(iso3!='ATA')) %>% 
   ggplot() +
-  geom_polygon(aes(x = long, y = lat,group = group, fill = latitude),color='black',size=.1) +
+  geom_polygon(aes(x = long, y = lat,group = group, fill = latitude),color='black',linewidth=.1) +
   #  scale_fill_manual(values=rev(c("#8B0000","#B2182B", "#D6604D", "#F4A582", "#FDDBC7", "#FFFFFF", "#92C5DE", "#4393C3", "#2166AC"))) + 
   scale_fill_manual(values=c("ROW"="grey",
                                 "High latitudes"="#440154FF",
@@ -95,7 +95,7 @@ damages_maps <- preferred_position %>%
 
 dist_impacts_bytype <- get_witch("damfrac_type") %>%
   mutate(source=case_when(str_detect(d,"temp")~"Temperature impacts",
-                          str_detect(d,"prec")~"Precipitaion impacts",
+                          str_detect(d,"prec")~"Precipitation impacts",
                           str_detect(d,"spill")~"Spillover effects",
                           .default="others")) %>%
   bind_rows(abatefrac) %>%
@@ -103,6 +103,7 @@ dist_impacts_bytype <- get_witch("damfrac_type") %>%
   mutate(source=ifelse(source %in% c("ab","sai"), "Climate policy (incl. SAI)", source )) %>% 
   group_by(t,n,file,source) %>% 
   summarise(value=sum(value)) %>% 
+  inner_join(main_scenarios_noncoop) %>%  
 #  inner_join(YGROSS %>% rename(ykali=value)) %>%
 #  group_by(t,n,file,source) %>%
 #  summarise(value=sum(value*ykali),ykali=mean(ykali)) %>%
@@ -113,13 +114,13 @@ dist_impacts_bytype <- get_witch("damfrac_type") %>%
                                           latitude %in% c("High latitudes") ~ "high"),
                       latitude_n=ifelse(latitude_n==75,60,latitude_n)) ) %>% 
   inner_join(pop %>% rename(pop=value)) %>% 
+  filter(ttoyear(t)==2100) %>% 
   group_by(t,file,latitude_n,source) %>%
   summarise(max=ggdist::weighted_quantile(value,0.95,pop),
             sdup=ggdist::weighted_quantile(value,0.66,pop),
             sddo=ggdist::weighted_quantile(value,0.33,pop),
             min=ggdist::weighted_quantile(value,0.05,pop),
-            med=ggdist::weighted_quantile(value,0.5,pop)) %>%
-  filter(ttoyear(t)==2100) 
+            med=ggdist::weighted_quantile(value,0.5,pop))
 
 
 bars <- ggplot(dist_impacts_bytype %>% 
@@ -168,8 +169,9 @@ bars <- ggplot(dist_impacts_bytype %>%
         plot.margin = margin(l = 0, r = 0, t = 0, b = 0))
 
 require(patchwork)
-ggsave("fig_noncoop_cons.png",
+ggsave("fig5.png",
        plot=damages_maps + bars + plot_layout(widths = c(1, 0.4), guides = "collect"),
        width=18, 
        height=24, 
-       units="cm")
+       units="cm",
+       dpi=400)

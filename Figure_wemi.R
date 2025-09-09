@@ -62,7 +62,7 @@ abatefrac_g %>%
 
 fig_tatm <- TATM %>%
   inner_join(sanitized_names) %>%
-  filter(ttoyear(t)<=2100 & impacts==imp_select & pers_p=="inf" & pers_t=="inf" ) %>%
+  filter(ttoyear(t)<=2100 & impacts==imp_select ) %>%
   ggplot(aes(x=ttoyear(t),
              y=value,
              color=Scenario)) +
