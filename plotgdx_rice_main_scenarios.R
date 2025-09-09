@@ -1,5 +1,5 @@
 rm(list = ls())
-main_folder = "../Results_final/Impacts" #Where you're RICE/DICE/RICE50x code is located
+main_folder = "../Results_final/Weights" #Where you're RICE/DICE/RICE50x code is located
 witch_folder = main_folder #Where you're RICE/DICE/RICE50x code is located
 subdir = c("") #can be multiple directories
 #gdxtools::igdx("/Library/Frameworks/GAMS.framework/Resources/")
@@ -8,15 +8,16 @@ reg_id = "maxiso3sai" #for historical data folder
 year0 = 2015
 tstep = 5
 
-restrict_files = c("IMPbhmbest_","IMPbhmspecbest_") #to all scenarios matching partly at least one of its arguments
+restrict_files = c("") #to all scenarios matching partly at least one of its arguments
 exclude_files = c("")
 removepattern = c("")
 
 yearmin = 1980
 yearmax = 2300
 
-imp_select <- "BHM"
+imp_select <- "MAIN"
 ci_sel <- "best"
+downscaling_sel <- "pop" 
 #Initialize default options, load all witch and other functionsget
 source('R/witch_functions.R')
 
@@ -323,13 +324,13 @@ gdp <- sec_data["ssp_ykali"] %>% filter(V1=="ssp2") %>% mutate(t=as.numeric(t)) 
 sd_prec <- get_witch("impact_clivars")  %>%
   pivot_wider(names_from="V2") %>%
   mutate(sd=sd_prec/base_precip) %>%
-  select(n,sd) %>% unique()
+  select(n,file,sd) %>% unique()
 base_prec <- get_witch("impact_clivars")  %>%
   pivot_wider(names_from="V2") %>% 
-  mutate(prec0=base_precip/1000) %>% select(n,prec0)%>% unique()
+  mutate(prec0=base_precip/1000) %>% select(n,file,prec0)%>% unique()
 base_temp <- get_witch("impact_clivars")  %>%
   pivot_wider(names_from="V2") %>% 
-  mutate(temp0=base_temp) %>% select(n,temp0) %>% unique()
+  mutate(temp0=base_temp) %>% select(n,file,temp0) %>% unique()
 optimal_temp <- get_witch("impact_coef")  %>%
   pivot_wider(names_from="coefs",values_fill = 0) %>%  select(-n) %>% unique() %>% 
   full_join(get_witch("impact_clivars")  %>%

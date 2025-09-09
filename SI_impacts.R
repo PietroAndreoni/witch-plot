@@ -46,15 +46,18 @@ imp_strategy <- ggplot() +
              aes(x=ci_imp,
                  y=inj,
                  size=value), shape=21, color="grey80", fill=NA ) +
-  geom_text(data=z_sai_impacts %>% 
-              inner_join(sanitized_names_imp) %>%
-              filter(t==18 & value>0) %>%  
-              mutate(ci_imp=ordered(ci_imp,c("lo","mlo","best","mhi","hi")),
-                     inj=ordered(inj,c("60S","45S","30S","15S","0","15N","30N","45N","60N"))) %>% 
-              filter(Scenario=="Mitigation + SAI") %>% select(-Scenario,-nsrm),
-            aes(x=ci_imp,
-                y=inj,
-                label=as.character(round(value,0)) ), hjust=-2, color="grey80") +
+  # geom_text(data=z_sai_impacts %>% 
+  #             inner_join(sanitized_names_imp) %>%
+  #             filter(t==18 & value>0) %>%  
+  #             mutate(ci_imp=ordered(ci_imp,c("lo","mlo","best","mhi","hi")),
+  #                    inj=ordered(inj,c("60S","45S","30S","15S","0","15N","30N","45N","60N"))) %>% 
+  #             filter(Scenario=="Mitigation + SAI") %>% select(-Scenario,-nsrm),
+  #           aes(x=ci_imp,
+  #               y=inj,
+  #               label=str_replace_all(as.character(round(value,0)), " ", "") ), 
+  #           hjust=-2, 
+  #           size=2.5, 
+  #           color="grey80") +
   geom_point(data=z_sai_impacts %>% 
                inner_join(sanitized_names_imp) %>%
                filter(t==18 & value>0) %>%  
@@ -64,17 +67,18 @@ imp_strategy <- ggplot() +
              aes(x=ci_imp,
                  y=inj,
                  size=value, color=Scenario), shape=21, fill=NA ) +
-  geom_text(data=z_sai_impacts %>% 
-              inner_join(sanitized_names_imp) %>%
-              filter(t==18 & value>0) %>%  
-              mutate(ci_imp=ordered(ci_imp,c("lo","mlo","best","mhi","hi")),
-                     inj=ordered(inj,c("60S","45S","30S","15S","0","15N","30N","45N","60N"))) %>% 
-              filter(Scenario!="Mitigation + SAI"),
-            aes(x=ci_imp,
-                y=inj,
-                label=as.character(round(value,0)), 
-                color=Scenario), 
-            hjust=2 ) +
+  # geom_text(data=z_sai_impacts %>% 
+  #             inner_join(sanitized_names_imp) %>%
+  #             filter(t==18 & value>0) %>%  
+  #             mutate(ci_imp=ordered(ci_imp,c("lo","mlo","best","mhi","hi")),
+  #                    inj=ordered(inj,c("60S","45S","30S","15S","0","15N","30N","45N","60N"))) %>% 
+  #             filter(Scenario!="Mitigation + SAI"),
+  #           aes(x=ci_imp,
+  #               y=inj,
+  #               label=str_replace_all(as.character(round(value,0)), " ", ""), 
+  #               color=Scenario), 
+  #           hjust=2, 
+  #           size=2.5 ) +
   scale_alpha_manual(values=c("mlo"=0.7,"mhi"=0.7,"best"=1)) +
   facet_grid(Scenario~impacts,)+
   scale_color_manual(values=regpalette_srm) +
@@ -105,7 +109,7 @@ fig_inj <- ggplot(gdploss_imp %>%
                     ymax=sdup,
                     color=Scenario, 
                     group=interaction(impacts,ci_imp,Scenario) ),
-                width=0.4,position=position_dodge(width=0.5)) +
+                width=0.4,position=position_dodge(width=0.8)) +
   geom_errorbar(data=.%>%
                   group_by(file,Scenario,impacts,ci_imp,t) %>%
                   summarise(max=ggdist::weighted_quantile(value,0.95,pop),
@@ -117,7 +121,7 @@ fig_inj <- ggplot(gdploss_imp %>%
                     ymax=max,
                     color=Scenario, 
                     group=interaction(impacts,ci_imp,Scenario) ),
-                width=0.1,position=position_dodge(width=0.5),alpha=0.2) +
+                width=0.1,position=position_dodge(width=0.8),alpha=0.2) +
   geom_point(data=. %>% 
                group_by(file,Scenario,impacts,ci_imp,t) %>%
                summarise(med=ggdist::weighted_quantile(value,0.5,pop)) ,
@@ -126,16 +130,17 @@ fig_inj <- ggplot(gdploss_imp %>%
                  fill=Scenario,
                  group=interaction(impacts,ci_imp,Scenario)),
              color="black",
-             size=2,shape=21,position=position_dodge(width=0.5)) +
+             size=2,shape=21,position=position_dodge(width=0.8)) +
   geom_point(aes(x=ci_imp,
                  y=value,
                  color=Scenario,
                  group=interaction(impacts,ci_imp,Scenario)),
-             size=1,position=position_dodge(width=0.5),alpha=0.5,shape=108) +
+             size=1,position=position_dodge(width=0.8),alpha=0.5,shape=108) +
   scale_color_manual(values=regpalette_srm) +
   scale_fill_manual(values=regpalette_srm) +  
   scale_y_continuous(limits = c(-1,1)) + 
   facet_wrap(impacts~.,ncol=1) +
   ylab('') + xlab('') + coord_flip()
 
-ggsave("fig_injection.png",plot=imp_strategy / fig_inj + plot_layout(widths = c(0.7, 2)),width=18, height=18*1.2, units="cm", dpi=400)
+ggsave("fig_SIinjection.png",plot=imp_strategy,width=18, height=16, units="cm", dpi=400)
+ggsave("fig_SIwelfare.png",plot=fig_inj,width=18, height=22, units="cm", dpi=400)

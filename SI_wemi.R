@@ -44,7 +44,7 @@ conc <- CONC %>%
   theme(legend.position = "none") +
   xlab("") + ylab("Global GHGs concentrations [ppm/ppb]")
 require(patchwork)
-ggsave("fig_wemi.png",plot=wemi/conc,width=18, height=14, units="cm")
+ggsave("fig_wemi.png",plot=wemi/conc,width=18, height=14, units="cm",dpi=400)
 
 abatefrac_g %>% 
   inner_join(sanitized_names) %>%
@@ -79,4 +79,4 @@ fig_tatm <- TATM %>%
   xlab("")+
   scale_color_manual(values=regpalette_srm,
                      name="Scenario") 
-ggsave("fig_tatm.png",plot=fig_tatm,width=8, height=8, units="cm")
+ggsave("fig_tatm.png",plot=fig_tatm,width=12, height=12, units="cm",dpi=400)
