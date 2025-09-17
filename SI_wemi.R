@@ -75,8 +75,8 @@ fig_tatm <- TATM %>%
             linewidth=1) +
 #s  facet_wrap(.~impacts) +
   theme_pubr() + 
-  ylab("Average land temperature increase [°C]") +
-  xlab("")+
+  ylab("") +
+  xlab("Global mean temperature increase relative to preindustrial [°C]")+
   scale_color_manual(values=regpalette_srm,
                      name="Scenario") 
-ggsave("fig_tatm.png",plot=fig_tatm,width=12, height=12, units="cm",dpi=400)
+ggsave("fig_tatm.png",plot=fig_tatm,width=14, height=12, units="cm",dpi=400)

@@ -1,10 +1,10 @@
-files <- list.files("../Results_final/Impacts",pattern=".gdx")
-y_impacts <- batch_extract(c("Y"),paste0("../Results_final/Impacts/",files ) )$Y %>%
-  mutate(file=str_remove_all(gdx,"../Results_final/Impacts/|.gdx"),
+files <- list.files("../Results_newdata/Impacts",pattern=".gdx")
+y_impacts <- batch_extract(c("Y"),paste0("../Results_newdata/Impacts/",files ) )$Y %>%
+  mutate(file=str_remove_all(gdx,"../Results_newdata/Impacts/|.gdx"),
          t=as.numeric(t)) %>%
   filter(!str_detect(file,"debug")) %>% as_tibble()
-ygross_impacts <- batch_extract(c("ykali"),paste0("../Results_final/Impacts/",files ) )$ykali %>%
-  mutate(file=str_remove_all(gdx,"../Results_final/Impacts/|.gdx"),
+ygross_impacts <- batch_extract(c("ykali"),paste0("../Results_newdata/Impacts/",files ) )$ykali %>%
+  mutate(file=str_remove_all(gdx,"../Results_newdata/Impacts/|.gdx"),
          t=as.numeric(t)) %>%
   filter(!str_detect(file,"debug")) %>% as_tibble() 
 
@@ -18,8 +18,8 @@ gdploss_imp <- y_impacts %>%
   mutate(valuerel=(value-value[nsrm=="Cooperative" & COOP=="coop"])/(value[nsrm=="no SRM" & COOP=="coop"]-value[nsrm=="Cooperative" & COOP=="coop"]) )
 
 z_sai_impacts <- gdxtools::batch_extract("Z_SAI",
-                                         files=paste0("../Results_final/Impacts/",list.files(path="../Results_final/Impacts",pattern="results_")))$Z_SAI %>%
-  mutate(file=str_remove_all(gdx,"../Results_final/Impacts/|.gdx"),
+                                         files=paste0("../Results_newdata/Impacts/",list.files(path="../Results_newdata/Impacts",pattern="results_")))$Z_SAI %>%
+  mutate(file=str_remove_all(gdx,"../Results_newdata/Impacts/|.gdx"),
          t=as.numeric(t)) %>% select(-gdx) %>% as_tibble()
 
 preferred_position <-  gdploss_imp %>% 

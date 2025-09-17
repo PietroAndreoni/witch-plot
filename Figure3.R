@@ -52,7 +52,7 @@ precipitation_maps <- PREC %>% rename(prec=value) %>%
   facet_wrap(ordered(Scenario,c("Mitigation","Mitigation + SAI","China","USA","Brazil","India"))~.,nrow=2)
 
 fig_maps <- ggarrange(temperature_maps,precipitation_maps, nrow=2, labels = c("a","b"))
-ggsave("fig3.png",
+ggsave(paste0("fig3_",imp_select,downscaling_sel,".png"),
        plot=fig_maps,
        width=18, 
        height=24, 

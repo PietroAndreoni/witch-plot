@@ -29,7 +29,7 @@ precvar <- clim %>% filter(V1=="beta_precip")
 tglobal <- data.frame(inj_lat = c(-60,-45,-30,-15,0,15,30,45,60), 
                       tg = c(0.757,1.113,1.135,1,0.808,0.883,0.98,0.97,0.72) )
 
-pop2020 <- pop %>% filter(t==2) %>% rename(pop2=value) %>% select(n,pop2)
+pop2020 <- pop %>% filter(t==2) %>% rename(pop2=value) %>% select(n,pop2) %>% unique()
 
 ########################### temperature plots
 reaction_t_srm <- cross_join(clim %>% 
@@ -46,7 +46,7 @@ f1a <- ggplot(temp %>% filter(inj_lat %in% c(-30,0,30) ) ) +
                  color=as.factor(inj_lat)),
              alpha=0.2) +  
   geom_hline(yintercept=0,color="grey80",linewidth=1) +
-  geom_point(data=unique(inner_join(reaction_t_srm %>% filter(inj_lat==0),temp %>% select(n,meanlat))),  
+  geom_point(data=unique(inner_join(reaction_t_srm %>% filter(inj_lat==0),temp %>% filter(se=="obs"& w==downscaling_sel) %>% select(n,meanlat))),  
              aes(x=as.numeric(meanlat), y=t_eq ), 
              color="black", 
              alpha=0.1) +
@@ -79,9 +79,9 @@ reaction_p_srm <- cross_join(clim %>%
                              tglobal) %>%
   mutate(p_eq = - beta_precip * tg / alpha_precip)
 
-f1b <- ggplot(prec %>% inner_join(sd_prec) %>%
+f1b <- ggplot(prec %>% inner_join(unique(sd_prec %>% inner_join(sanitized_names) %>% filter(impacts==imp_select & ci_imp==ci_sel & dsc_t==downscaling_sel) %>%  select(n,sd)) ) %>%
                 filter(inj_lat %in% c(-30,0,30)) %>% 
-                inner_join(unique(inner_join(reaction_p_srm,prec %>% select(n,meanlat)))) ) +
+                inner_join(unique(inner_join(reaction_p_srm,prec  %>% filter(se=="obs" & w==downscaling_sel) %>% select(n,meanlat)))) ) +
   geom_hline(yintercept=0,color="grey80",linewidth=1) +
   geom_ribbon(aes(x=meanlat,
                   ymin=-1,
@@ -89,7 +89,7 @@ f1b <- ggplot(prec %>% inner_join(sd_prec) %>%
               color="grey80",
               linewidth=0.5,
               alpha=0.2) +
-  geom_point(data=unique(inner_join(reaction_p_srm %>% filter(inj_lat==0),prec %>% select(n,meanlat))) %>% inner_join(sd_prec),  
+  geom_point(data=unique(inner_join(reaction_p_srm %>% filter(inj_lat==0),prec  %>% filter(se=="obs" & w==downscaling_sel) %>% select(n,meanlat))) %>% inner_join(unique(sd_prec %>% inner_join(sanitized_names) %>% filter(impacts==imp_select & ci_imp==ci_sel & dsc_t==downscaling_sel) %>%  select(n,sd))),  
              aes(x=as.numeric(meanlat), 
                  y=p_eq/sd ), 
              color="black", 
@@ -98,7 +98,7 @@ f1b <- ggplot(prec %>% inner_join(sd_prec) %>%
                                                         y=value/sd,
                                                         color=ordered(inj_lat,c(-60,-45,-30,-15,0,15,30,45,60))),alpha=0.2) +
   geom_smooth(data=unique(inner_join(reaction_p_srm %>% filter(inj_lat==0),prec %>% filter(se=="obs" & w==downscaling_sel) %>% select(n,meanlat))) %>% 
-                inner_join(sd_prec)%>%
+                inner_join(unique(sd_prec %>% inner_join(sanitized_names) %>% filter(impacts==imp_select & ci_imp==ci_sel & dsc_t==downscaling_sel) %>%  select(n,sd)) )%>%
                 inner_join(pop2020),  
               aes(x=as.numeric(meanlat), 
                   y=p_eq/sd ), 
@@ -120,8 +120,9 @@ f1b <- ggplot(prec %>% inner_join(sd_prec) %>%
   xlab("") + ylab("Precipitation variation [SD]") +
   coord_flip()
 
-ci_sel<-"best"
 a <- optimal_temp %>% 
+  inner_join(sanitized_names) %>% 
+  filter(impacts==imp_select & ci_imp==ci_sel & dsc_p==downscaling_sel) %>% 
   cross_join(data.frame(tvar=seq(-2,+2,0.1))) %>% 
   mutate(dg = TM * (tvar) + TM_2 * ((tvar+base_temp)^2-base_temp^2) + dev_TM_all_2 * (tvar/sd_temp)^2   ) %>% 
   inner_join(sanitized_names) %>% 
@@ -156,6 +157,8 @@ a <- optimal_temp %>%
 
 
 b <- optimal_prec %>% 
+  inner_join(sanitized_names) %>% 
+  filter(impacts==imp_select & ci_imp==ci_sel & dsc_p==downscaling_sel) %>% 
   cross_join(data.frame(tvar=seq(-3,+3,0.05))) %>% 
   mutate(dg = RR * (tvar*sd_prec*1e-3) + RR_2 * ( ((tvar*sd_prec+base_precip)*1e-3)^2-(base_precip*1e-3)^2) + dev_RR_all_2 * (tvar)^2   ) %>% 
   inner_join(sanitized_names) %>% select(n,impacts,ci_imp,base_temp,tvar,dg) %>% unique() %>% 
@@ -207,4 +210,4 @@ c <- gdploss %>%
 fig_impacts <- ggarrange(ggarrange(f1a,f1b,nrow=1, labels=c("a",""),common.legend = TRUE),
                          ggarrange(a,b,nrow=1, labels=c("b",""),common.legend = TRUE),
                          c,nrow=3,heights=c(1,1,1), labels=c("","","c"))
-ggsave("fig1.png",plot=fig_impacts,width=18, height=18*1.2, units="cm")
+ggsave(paste0("fig1_",imp_select,downscaling_sel,".png"),plot=fig_impacts,width=18, height=18*1.2, units="cm")

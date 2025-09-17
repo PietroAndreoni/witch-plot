@@ -155,7 +155,7 @@ bars <- ggplot(dist_impacts_bytype %>%
         plot.margin = margin(l = 0, r = 0, t = 0, b = 0))
 
 require(patchwork)
-ggsave("fig4.png",
+ggsave(paste0("fig4_",imp_select,downscaling_sel,".png"),
        plot=damages_maps + bars + plot_layout(widths = c(1, 0.4), guides = "collect"),
        width=18, 
        height=24, 

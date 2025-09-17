@@ -1,5 +1,4 @@
-rm(list = ls())
-main_folder = "../Results_final/Weights" #Where you're RICE/DICE/RICE50x code is located
+rm(list = setdiff(ls(), c("main_folder","imp_select","ci_sel","downscaling_sel")))
 witch_folder = main_folder #Where you're RICE/DICE/RICE50x code is located
 subdir = c("") #can be multiple directories
 #gdxtools::igdx("/Library/Frameworks/GAMS.framework/Resources/")
@@ -15,9 +14,6 @@ removepattern = c("")
 yearmin = 1980
 yearmax = 2300
 
-imp_select <- "MAIN"
-ci_sel <- "best"
-downscaling_sel <- "pop" 
 #Initialize default options, load all witch and other functionsget
 source('R/witch_functions.R')
 

@@ -192,4 +192,4 @@ fig2_coops <- ggarrange(ggarrange(void,globtemp,void,nrow=1, labels=c("","a","")
                         ggarrange(regtemp2100,precip2100,nrow=1, labels=c("b","c")),
                         ggarrange(void,gdploss_maps,void,nrow=1, labels=c("","d",""), widths=c(0.3,1,0.3)),
                         nrow=3,heights=c(1.2,1,1.2), labels=c("","",""))
-ggsave("fig2.png",plot=fig2_coops,width=18, height=24, units="cm",dpi=400)
+ggsave(paste0("fig2_",imp_select,downscaling_sel,".png"),plot=fig2_coops,width=18, height=24, units="cm",dpi=400)
